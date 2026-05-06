@@ -1,12 +1,16 @@
 import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
 
 /**
- * Phase 1.x — root redirects to the static HTML preview that lives in
- * /public/intake.html. This is the same UI Boss tested locally (v6).
+ * Root: auth-aware redirect.
+ * - Logged in → /wizard
+ * - Not logged in → /sign-in
  *
- * Next iteration (Stage 7.3) will replace this with a real React-based
- * sign-in page wired to Supabase Auth and live data.
+ * Note: /intake.html (static v6 preview) is still accessible directly
+ * for legacy testing — middleware skips it.
  */
-export default function Home() {
-  redirect("/intake.html");
+export default async function Home() {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  redirect(user ? "/wizard" : "/sign-in");
 }
