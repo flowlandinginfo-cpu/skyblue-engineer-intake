@@ -1,0 +1,2094 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- Cache-busting headers (v6) -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <title>Engineer Intake v6 — Sky Blue Construction</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    tailwind.config = {
+      theme: { extend: {
+        colors: {
+          brand: {
+            primary: '#1A5276', 'primary-dark': '#154360', 'primary-light': '#2874A6',
+            accent: '#F39C12', success: '#27AE60', danger: '#E74C3C',
+          },
+        },
+        fontFamily: { sans: ['Sarabun', 'system-ui', 'sans-serif'] },
+        borderRadius: { xl: '12px', '2xl': '16px' },
+        boxShadow: { soft: '0 2px 8px rgba(0,0,0,0.08)' },
+      }},
+    };
+  </script>
+  <style>
+    body { font-family: 'Sarabun', system-ui, sans-serif; }
+    .scroll-thin::-webkit-scrollbar { width: 6px; height: 6px; }
+    .scroll-thin::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+    .slide-in { animation: slide-in 0.25s ease-out; }
+    @keyframes slide-in { from { transform: translateX(100%); } to { transform: translateX(0); } }
+    .fade-in { animation: fade-in 0.2s ease-out; }
+    @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+    .input-base { @apply w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm transition focus:border-brand-primary focus:outline-none focus:ring-2 focus:ring-brand-primary/20; }
+    .label-base { @apply mb-1 block text-sm font-medium text-slate-700; }
+    .required::after { content: ' *'; color: #E74C3C; }
+    .gantt-bar { transition: all 0.3s; }
+    .gantt-bar:hover { transform: scaleY(1.1); }
+  </style>
+</head>
+<body class="min-h-screen bg-slate-50 text-slate-800">
+  <!-- Version banner — confirms Boss is viewing v6 with attach file -->
+  <div class="fixed left-3 top-3 z-[100] rounded-full bg-emerald-500 px-3 py-1 text-[10px] font-bold text-white shadow-lg" id="version-banner">
+    ✓ v6 · attach files enabled
+  </div>
+  <script>
+    setTimeout(() => { const b = document.getElementById('version-banner'); if (b) b.style.display = 'none'; }, 5000);
+  </script>
+
+  <!-- ============================================================ -->
+  <!--   TOP NAV (visible when logged in)                            -->
+  <!-- ============================================================ -->
+  <header id="top-nav" class="sticky top-0 z-30 hidden bg-white shadow-soft">
+    <div class="mx-auto flex max-w-7xl items-center justify-between px-6 py-3">
+      <div class="flex items-center gap-3">
+        <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-primary text-white">
+          <i data-lucide="hard-hat" class="h-5 w-5"></i>
+        </div>
+        <div>
+          <h1 class="text-base font-semibold text-slate-800">Sky Blue Construction</h1>
+          <p class="text-xs text-slate-500">Engineer Intake System</p>
+        </div>
+      </div>
+      <nav class="flex items-center gap-2">
+        <button onclick="goRoute('wizard')" id="nav-wizard" class="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100">
+          📝 ฟอร์มกรอกโครงการ
+        </button>
+        <button onclick="goRoute('admin')" id="nav-admin" class="hidden rounded-lg px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100">
+          ⚙️ Admin
+        </button>
+        <div class="ml-3 flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-1.5">
+          <div id="user-avatar" class="flex h-8 w-8 items-center justify-center rounded-full bg-brand-primary text-xs font-bold text-white">วี</div>
+          <div class="text-left">
+            <p id="user-name" class="text-xs font-semibold text-slate-700">Boss วี</p>
+            <p id="user-role" class="text-[10px] text-slate-500">Engineer · SKY001</p>
+          </div>
+          <button onclick="signOut()" class="ml-2 rounded p-1 text-slate-400 hover:text-brand-danger" title="ออกจากระบบ">
+            <i data-lucide="log-out" class="h-4 w-4"></i>
+          </button>
+        </div>
+      </nav>
+    </div>
+
+    <!-- Wizard progress (only visible on #wizard route) -->
+    <div id="wizard-progress" class="hidden border-t border-slate-100">
+      <div class="mx-auto flex max-w-7xl items-center justify-between gap-2 px-6 py-4" id="progress-steps"></div>
+    </div>
+  </header>
+
+  <!-- ============================================================ -->
+  <!--   MAIN ROUTED CONTENT                                         -->
+  <!-- ============================================================ -->
+  <main id="route-content" class="fade-in"></main>
+
+  <!-- ============================================================ -->
+  <!--   STICKY FOOTER (wizard only)                                 -->
+  <!-- ============================================================ -->
+  <footer id="wizard-footer" class="fixed bottom-0 left-0 right-0 z-20 hidden border-t border-slate-200 bg-white shadow-soft">
+    <div class="mx-auto flex max-w-7xl items-center justify-between gap-3 px-6 py-3">
+      <button onclick="prevStep()" class="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100">
+        <i data-lucide="chevron-left" class="h-4 w-4"></i> ย้อนกลับ
+      </button>
+      <div id="autosave-indicator" class="text-xs text-slate-400"></div>
+      <div class="flex items-center gap-2">
+        <button onclick="saveDraft()" class="flex items-center gap-2 rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
+          <i data-lucide="save" class="h-4 w-4"></i> บันทึก draft
+        </button>
+        <button onclick="nextStep()" class="flex items-center gap-2 rounded-xl bg-brand-primary px-5 py-2 text-sm font-semibold text-white transition hover:bg-brand-primary-dark">
+          <span>ถัดไป</span> <i data-lucide="chevron-right" class="h-4 w-4"></i>
+        </button>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ============================================================ -->
+  <!--   AI GUIDE FLOATING BUTTON                                    -->
+  <!-- ============================================================ -->
+  <button id="ai-toggle" onclick="toggleAiGuide()" class="fixed bottom-24 right-6 z-40 hidden h-14 w-14 items-center justify-center rounded-full bg-brand-primary text-white shadow-lg transition hover:scale-110">
+    <span class="text-2xl">🤖</span>
+    <span class="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-brand-accent text-xs font-bold">!</span>
+  </button>
+
+  <aside id="ai-sidebar" class="fixed right-0 top-0 z-50 hidden h-full w-full max-w-md border-l border-slate-200 bg-white shadow-xl">
+    <div class="flex h-full flex-col">
+      <div class="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+        <div class="flex items-center gap-2">
+          <span class="text-2xl">🤖</span>
+          <div>
+            <h2 class="text-sm font-semibold text-slate-800">ผู้ช่วย AI</h2>
+            <p class="text-xs text-slate-500">claude-sonnet-4 (mock)</p>
+          </div>
+        </div>
+        <button onclick="toggleAiGuide()" class="rounded-lg p-2 text-slate-500 hover:bg-slate-100">
+          <i data-lucide="x" class="h-5 w-5"></i>
+        </button>
+      </div>
+      <div class="border-b border-slate-200 px-5 py-4">
+        <h3 class="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">ความคืบหน้า</h3>
+        <ul id="checklist-list" class="space-y-2 text-sm"></ul>
+      </div>
+      <div class="flex-1 overflow-y-auto px-5 py-4 scroll-thin">
+        <h3 class="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">คำแนะนำ</h3>
+        <div id="ai-tips" class="space-y-3 text-sm leading-relaxed text-slate-700"></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Modal + Toast -->
+  <div id="modal-root"></div>
+  <div id="toast-root" class="pointer-events-none fixed bottom-24 right-6 z-[60] flex flex-col items-end gap-2"></div>
+
+  <!-- ============================================================ -->
+  <!--   APP LOGIC                                                   -->
+  <!-- ============================================================ -->
+  <script>
+    /* ─── Mock data ──────────────────────────────────────────────── */
+    const EMPLOYEES = [
+      { id: 'emp-001', name: 'นายอิรสปัณย์ มานิ', role_label: 'engineer', email: 'eng1@skyblue.co.th', phone: '081-234-5678', line_id: 'irs_eng', is_approved: true },
+      { id: 'emp-002', name: 'นายลุคมัน มะแสะ', role_label: 'foreman', email: 'foreman@skyblue.co.th', phone: '082-345-6789', line_id: 'lukman_fm', is_approved: true },
+      { id: 'emp-003', name: 'นายอาชี ยีมานิ', role_label: 'manager', email: 'manager@skyblue.co.th', phone: '083-456-7890', line_id: 'achi_mgr', is_approved: true },
+      { id: 'emp-004', name: 'นายปรีชา รุ่งเรือง', role_label: 'site_manager', email: 'site@skyblue.co.th', phone: '084-567-8901', line_id: 'preecha_sm', is_approved: true },
+      { id: 'emp-005', name: 'นายสมชาย ทดลอง', role_label: 'engineer', email: 'newbie@skyblue.co.th', phone: '085-678-9012', line_id: 'somchai_new', is_approved: false },
+    ];
+    const SUPPLIERS = [
+      { id: 'sup-001', name: 'บริษัท TPI โพลีน จำกัด', category: 'ปูนซีเมนต์' },
+      { id: 'sup-002', name: 'บริษัท สหวิริยา จำกัด', category: 'เหล็กเส้น' },
+      { id: 'sup-003', name: 'บริษัท ศุภไทย เทรด จำกัด', category: 'ทราย/หิน' },
+      { id: 'sup-004', name: 'ร้านวัสดุก่อสร้างยะลา', category: 'ทั่วไป' },
+    ];
+    const PROJECT_TYPES = [
+      { value: 'government', label: 'งานภาครัฐ' },
+      { value: 'private', label: 'งานเอกชน' },
+      { value: 'other', label: 'อื่นๆ' },
+    ];
+    const MATERIAL_CATEGORIES = ['คอนกรีต', 'เหล็ก', 'ไม้แบบ', 'กระเบื้อง', 'ประตู-หน้าต่าง', 'สี', 'ระบบไฟฟ้า', 'ระบบประปา', 'อื่นๆ'];
+    const LABOR_CATEGORIES = ['งานโครงสร้าง', 'งานสถาปัตย์', 'งานระบบ', 'งานตกแต่ง', 'งานภูมิทัศน์', 'อื่นๆ'];
+    const ROLE_LABELS = [
+      { value: 'engineer', label: 'วิศวกร' },
+      { value: 'foreman', label: 'โฟร์แมน' },
+      { value: 'site_manager', label: 'Site Manager' },
+      { value: 'skilled_worker', label: 'ช่างฝีมือ' },
+      { value: 'worker', label: 'แรงงาน' },
+      { value: 'manager', label: 'ผู้จัดการ' },
+      { value: 'other', label: 'อื่นๆ' },
+    ];
+    const UNITS_MAT = ['ถุง', 'ลบ.ม.', 'เส้น', 'แผ่น', 'ตร.ม.', 'ชุด', 'กก.', 'ลิตร', 'ม.', 'ชิ้น'];
+    const UNITS_LAB = ['ลบ.ม.', 'ตร.ม.', 'จุด', 'งาน', 'วัน', 'กก.', 'ม.', 'หลัง'];
+
+    /* ─── App state ──────────────────────────────────────────────── */
+    const state = {
+      route: 'sign-in',          // sign-in | register | wizard | admin
+      auth: {
+        loggedIn: false,
+        user: null,             // {id, name, role_label, email, ...}
+      },
+      // wizard
+      currentStep: 1,
+      step1Tab: '1A',
+      projectCode: null,
+      info: {
+        project_name: '', project_type: 'government', client_name: '',
+        location_address: '',
+        google_maps_url: '',     // NEW v2: paste URL → auto extract
+        location_lat: '', location_lng: '',
+        site_manager_id: '', project_manager_id: '',
+        onedrive_folder_url: '', // ยังเก็บ OneDrive (Phase 1) แต่เปลี่ยน label
+      },
+      contract: {
+        contract_no: '', contract_value: '', budget_estimate: '',
+        start_date: '', end_date: '', intake_deadline: '',
+        contract_files: [],     // [{id, name, size, type, uploaded_at, url, doc_type}]
+      },
+      milestones: [],            // {..., tasks_summary, acceptance_criteria, responsible_id, dependency_id, client_approved_amount, reminders:[]}
+      defaultSupplierId: '',     // NEW v2: preset supplier
+      materials: [],             // {..., category, material_code}
+      labor: [],                 // {..., category, work_description, worker_count, duration_days, team_leader, planned_start, planned_end}
+      team: [],
+      checklist: {
+        project_info: false, contract: false, milestones: false,
+        boq_materials: false, boq_labor: false, team: false,
+      },
+    };
+
+    const STEPS = [
+      { id: 1, label: 'ข้อมูลโครงการ' },
+      { id: 2, label: 'งวดงาน + Gantt' },
+      { id: 3, label: 'BOQ วัสดุ' },
+      { id: 4, label: 'BOQ ค่าแรง' },
+      { id: 5, label: 'ทีมงาน' },
+    ];
+
+    /* ─── Util ───────────────────────────────────────────────────── */
+    const uid = () => Math.random().toString(36).slice(2, 10);
+    const fmtCurrency = (n) => (n === '' || n === null || isNaN(n)) ? '-' : new Intl.NumberFormat('th-TH', { maximumFractionDigits: 2 }).format(Number(n));
+
+    /* ─── Numeric input helpers (NO RE-RENDER ON TYPING) ─────────
+     * Pattern: typing → raw value (state update only, no DOM rebuild)
+     *          blur   → format with commas + render derived UI
+     *          focus  → strip commas + select all
+     * Strips paste of "1,000,000" → "1000000" automatically.
+     */
+    function formatThaiNumber(v) {
+      if (v === '' || v === null || v === undefined) return '';
+      const n = Number(String(v).replace(/,/g, ''));
+      if (isNaN(n)) return '';
+      return new Intl.NumberFormat('th-TH', { maximumFractionDigits: 2 }).format(n);
+    }
+    function cleanNumeric(s) {
+      // remove comma, spaces, keep digits + single dot
+      let v = String(s).replace(/[^\d.]/g, '');
+      const parts = v.split('.');
+      if (parts.length > 2) v = parts[0] + '.' + parts.slice(1).join('');
+      return v;
+    }
+    function onNumFocus(el) {
+      const raw = el.dataset.raw || cleanNumeric(el.value);
+      el.value = raw;
+      el.dataset.raw = raw;
+      // delay select to next tick
+      setTimeout(() => el.select && el.select(), 0);
+    }
+    function onNumInput(el, setter) {
+      const before = el.value;
+      const cleaned = cleanNumeric(before);
+      if (cleaned !== before) {
+        // restore cursor after sanitize
+        const pos = el.selectionStart - (before.length - cleaned.length);
+        el.value = cleaned;
+        try { el.setSelectionRange(pos, pos); } catch {}
+      }
+      el.dataset.raw = cleaned;
+      // SILENT state update — NO renderStep
+      setter(cleaned);
+    }
+    function onNumBlur(el, setter, onCommit) {
+      const raw = cleanNumeric(el.value);
+      el.dataset.raw = raw;
+      el.value = formatThaiNumber(raw);
+      setter(raw);
+      // safe to fully render now (user left the field)
+      if (onCommit) onCommit();
+    }
+    /* Tiny helpers to wire setters declaratively */
+    function setMilestoneField(id, field) { return v => { const m = state.milestones.find(x => x.id === id); if (m) m[field] = v; }; }
+    function setBoqField(type, id, field) { return v => { const arr = type === 'materials' ? state.materials : state.labor; const r = arr.find(x => x.id === id); if (r) r[field] = v; }; }
+    function setContractField(field) { return v => { state.contract[field] = v; }; }
+    const $ = (s) => document.querySelector(s);
+    const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstChild; };
+    const escape = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+    function toast(msg, type = 'success') {
+      const colors = { success: 'bg-brand-success', danger: 'bg-brand-danger', info: 'bg-brand-primary', warning: 'bg-brand-accent' };
+      const el = h(`<div class="pointer-events-auto rounded-xl px-4 py-3 text-sm font-medium text-white shadow-lg slide-in ${colors[type]}">${escape(msg)}</div>`);
+      $('#toast-root').appendChild(el);
+      setTimeout(() => el.remove(), 3000);
+    }
+
+    /* ─── Routing ────────────────────────────────────────────────── */
+    function goRoute(route) {
+      state.route = route;
+      window.location.hash = route;
+      render();
+    }
+    window.addEventListener('hashchange', () => {
+      const r = (window.location.hash || '#sign-in').slice(1);
+      if (['sign-in','register','wizard','admin'].includes(r)) { state.route = r; render(); }
+    });
+
+    function render() {
+      const root = $('#route-content');
+      root.innerHTML = '';
+      root.classList.remove('fade-in'); void root.offsetWidth; root.classList.add('fade-in');
+
+      // Auth guard
+      if (!state.auth.loggedIn && !['sign-in','register'].includes(state.route)) {
+        state.route = 'sign-in';
+      }
+
+      // Show/hide nav + footer based on route
+      const nav = $('#top-nav');
+      const wizardProgress = $('#wizard-progress');
+      const footer = $('#wizard-footer');
+      const aiBtn = $('#ai-toggle');
+      if (state.auth.loggedIn) {
+        nav.classList.remove('hidden');
+        if (state.auth.user.role_label === 'manager' || state.auth.user.role_label === 'admin') {
+          $('#nav-admin').classList.remove('hidden');
+        }
+      } else {
+        nav.classList.add('hidden');
+      }
+      wizardProgress.classList.toggle('hidden', state.route !== 'wizard');
+      footer.classList.toggle('hidden', state.route !== 'wizard');
+      aiBtn.classList.toggle('hidden', state.route !== 'wizard');
+      aiBtn.classList.toggle('flex', state.route === 'wizard');
+      // close ai sidebar on route change
+      $('#ai-sidebar').classList.add('hidden');
+
+      switch (state.route) {
+        case 'sign-in':  root.appendChild(renderSignIn());  break;
+        case 'register': root.appendChild(renderRegister()); break;
+        case 'wizard':   renderWizard(root); break;
+        case 'admin':    root.appendChild(renderAdmin()); break;
+      }
+      lucide.createIcons();
+    }
+
+    /* ──────────────────────────────────────────────────────────── */
+    /*  SIGN IN PAGE                                                */
+    /* ──────────────────────────────────────────────────────────── */
+    function renderSignIn() {
+      return h(`
+        <div class="flex min-h-screen items-center justify-center bg-gradient-to-br from-brand-primary via-brand-primary-light to-cyan-700 px-4 py-10">
+          <div class="grid w-full max-w-5xl grid-cols-1 overflow-hidden rounded-2xl bg-white shadow-2xl md:grid-cols-2">
+            <!-- Left: brand panel -->
+            <div class="relative hidden flex-col justify-between bg-brand-primary p-10 text-white md:flex">
+              <div>
+                <div class="mb-4 flex items-center gap-3">
+                  <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-white/20"><i data-lucide="hard-hat" class="h-6 w-6"></i></div>
+                  <div>
+                    <h2 class="text-xl font-bold">Sky Blue Construction</h2>
+                    <p class="text-xs opacity-80">Engineer Intake System</p>
+                  </div>
+                </div>
+                <h3 class="mt-10 text-2xl font-semibold leading-snug">บันทึกโครงการเสร็จใน 5 ขั้น<br/>ก่อนเริ่มหน้างานจริง</h3>
+                <p class="mt-3 text-sm opacity-90">ฟอร์มสำหรับวิศวกร — paste จาก Excel ได้, ไม่ต้องพิมพ์เยอะ, มี AI ช่วย</p>
+              </div>
+              <div class="space-y-2 text-xs opacity-80">
+                <div class="flex items-center gap-2"><i data-lucide="check" class="h-3 w-3"></i> Sync ไป Supabase ทันที</div>
+                <div class="flex items-center gap-2"><i data-lucide="check" class="h-3 w-3"></i> Mobile-first สำหรับหน้างาน</div>
+                <div class="flex items-center gap-2"><i data-lucide="check" class="h-3 w-3"></i> ระบบทวงถามอัตโนมัติ</div>
+              </div>
+            </div>
+            <!-- Right: form -->
+            <div class="p-8 sm:p-10">
+              <h1 class="mb-1 text-2xl font-bold text-slate-800">เข้าสู่ระบบ</h1>
+              <p class="mb-6 text-sm text-slate-500">สำหรับวิศวกรและทีมที่ได้รับอนุมัติ</p>
+              <div class="space-y-4">
+                <div>
+                  <label class="label-base">อีเมล</label>
+                  <input id="signin-email" class="input-base" type="email" placeholder="you@skyblue.co.th" value="eng1@skyblue.co.th" />
+                </div>
+                <div>
+                  <label class="label-base">รหัสผ่าน</label>
+                  <input id="signin-pw" class="input-base" type="password" placeholder="••••••••" value="demo1234" />
+                </div>
+                <div class="flex items-center justify-between text-xs">
+                  <label class="flex items-center gap-1 text-slate-600"><input type="checkbox" /> จดจำฉัน</label>
+                  <a href="#" class="text-brand-primary hover:underline">ลืมรหัสผ่าน?</a>
+                </div>
+                <button onclick="doSignIn()" class="w-full rounded-xl bg-brand-primary py-3 text-sm font-semibold text-white transition hover:bg-brand-primary-dark">
+                  เข้าสู่ระบบ
+                </button>
+                <div class="relative my-3">
+                  <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-slate-200"></div></div>
+                  <div class="relative flex justify-center text-xs"><span class="bg-white px-3 text-slate-400">หรือ</span></div>
+                </div>
+                <button onclick="doMagicLink()" class="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-300 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                  <i data-lucide="mail" class="h-4 w-4"></i> ส่ง Magic Link ไปอีเมล
+                </button>
+                <button onclick="doLineLogin()" class="flex w-full items-center justify-center gap-2 rounded-xl bg-[#06C755] py-3 text-sm font-medium text-white hover:bg-[#05a647]">
+                  <i data-lucide="message-circle" class="h-4 w-4"></i> เข้าสู่ระบบด้วย LINE
+                </button>
+                <p class="mt-4 text-center text-sm text-slate-600">
+                  ยังไม่มีบัญชี? <a href="#register" class="font-semibold text-brand-primary hover:underline">สมัครเป็นวิศวกร</a>
+                </p>
+              </div>
+              <div class="mt-6 rounded-lg bg-slate-50 px-3 py-2 text-[11px] text-slate-500">
+                💡 Demo: คลิก "เข้าสู่ระบบ" → ล็อกอินเป็น Engineer | สลับเป็น Admin →
+                <button onclick="loginAs('manager')" class="text-brand-primary hover:underline">ล็อกอินเป็น Manager</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `);
+    }
+
+    function doSignIn() {
+      const email = $('#signin-email').value.trim();
+      const user = EMPLOYEES.find(e => e.email === email);
+      if (!user) { toast('ไม่พบบัญชี', 'danger'); return; }
+      if (!user.is_approved) { toast('บัญชีรอ admin อนุมัติ', 'warning'); return; }
+      state.auth.loggedIn = true;
+      state.auth.user = user;
+      toast(`ยินดีต้อนรับ ${user.name}`);
+      goRoute('wizard');
+    }
+    function doMagicLink() { toast('ส่ง magic link ไปแล้ว (mock)', 'info'); }
+    function doLineLogin() { toast('เปิด LINE login flow (mock)', 'info'); }
+    function loginAs(role) {
+      const user = EMPLOYEES.find(e => e.role_label === role);
+      if (!user) return;
+      state.auth.loggedIn = true;
+      state.auth.user = user;
+      toast(`ล็อกอินเป็น ${user.name}`);
+      $('#user-name').textContent = user.name;
+      $('#user-role').textContent = `${role} · SKY001`;
+      goRoute(role === 'manager' ? 'admin' : 'wizard');
+    }
+    function signOut() {
+      state.auth.loggedIn = false;
+      state.auth.user = null;
+      goRoute('sign-in');
+      toast('ออกจากระบบแล้ว');
+    }
+
+    /* ──────────────────────────────────────────────────────────── */
+    /*  REGISTER PAGE                                                */
+    /* ──────────────────────────────────────────────────────────── */
+    function renderRegister() {
+      const roleOpts = ROLE_LABELS.filter(r => ['engineer','foreman','site_manager'].includes(r.value))
+        .map(r => `<option value="${r.value}">${r.label}</option>`).join('');
+      return h(`
+        <div class="flex min-h-screen items-center justify-center bg-gradient-to-br from-brand-primary via-brand-primary-light to-cyan-700 px-4 py-10">
+          <div class="w-full max-w-2xl rounded-2xl bg-white p-8 shadow-2xl sm:p-10">
+            <div class="mb-6 flex items-center gap-3">
+              <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-primary text-white"><i data-lucide="user-plus" class="h-6 w-6"></i></div>
+              <div>
+                <h1 class="text-2xl font-bold text-slate-800">สมัครเป็นวิศวกร</h1>
+                <p class="text-sm text-slate-500">บัญชีจะรอ admin อนุมัติก่อนใช้งานได้</p>
+              </div>
+            </div>
+
+            <form onsubmit="event.preventDefault();doRegister()" class="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div class="md:col-span-2">
+                <label class="label-base required">ชื่อ-นามสกุล (ภาษาไทย)</label>
+                <input id="reg-name" class="input-base" placeholder="นายวิศวกร ใจดี" required />
+              </div>
+              <div>
+                <label class="label-base required">อีเมล</label>
+                <input id="reg-email" type="email" class="input-base" placeholder="you@skyblue.co.th" required />
+              </div>
+              <div>
+                <label class="label-base required">ตำแหน่ง</label>
+                <select id="reg-role" class="input-base">${roleOpts}</select>
+              </div>
+              <div>
+                <label class="label-base required">เบอร์โทรศัพท์</label>
+                <input id="reg-phone" class="input-base" placeholder="08X-XXX-XXXX" required />
+              </div>
+              <div>
+                <label class="label-base required">LINE ID</label>
+                <input id="reg-line" class="input-base" placeholder="line_id" required />
+              </div>
+              <div>
+                <label class="label-base required">รหัสผ่าน</label>
+                <input id="reg-pw" type="password" class="input-base" placeholder="≥ 8 ตัวอักษร" required minlength="8" />
+              </div>
+              <div>
+                <label class="label-base required">ยืนยันรหัสผ่าน</label>
+                <input id="reg-pw2" type="password" class="input-base" required minlength="8" />
+              </div>
+              <div class="md:col-span-2">
+                <label class="flex items-start gap-2 text-sm text-slate-600">
+                  <input type="checkbox" required class="mt-1" />
+                  <span>ยอมรับ <a href="#" class="text-brand-primary hover:underline">ข้อกำหนดการใช้งาน</a> และ <a href="#" class="text-brand-primary hover:underline">นโยบายความเป็นส่วนตัว</a></span>
+                </label>
+              </div>
+              <div class="md:col-span-2 flex items-center justify-between gap-3">
+                <a href="#sign-in" class="text-sm text-slate-500 hover:text-slate-700">← กลับไปเข้าสู่ระบบ</a>
+                <button type="submit" class="rounded-xl bg-brand-primary px-6 py-2.5 text-sm font-semibold text-white hover:bg-brand-primary-dark">สมัครสมาชิก</button>
+              </div>
+            </form>
+
+            <div class="mt-6 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+              ⚠️ หลังสมัคร — บัญชีจะมีสถานะ <b>"รอ admin อนุมัติ"</b> ใช้งานยังไม่ได้จนกว่า manager หรือ admin จะกด approve
+            </div>
+          </div>
+        </div>
+      `);
+    }
+    function doRegister() {
+      const pw = $('#reg-pw').value, pw2 = $('#reg-pw2').value;
+      if (pw !== pw2) { toast('รหัสผ่านไม่ตรงกัน', 'danger'); return; }
+      const newUser = {
+        id: 'emp-' + uid(),
+        name: $('#reg-name').value,
+        email: $('#reg-email').value,
+        phone: $('#reg-phone').value,
+        line_id: $('#reg-line').value,
+        role_label: $('#reg-role').value,
+        is_approved: false,
+      };
+      EMPLOYEES.push(newUser);
+      toast('สมัครสำเร็จ — รอ admin อนุมัติ', 'success');
+      goRoute('sign-in');
+    }
+
+    /* ──────────────────────────────────────────────────────────── */
+    /*  ADMIN PAGE — sidebar layout                                  */
+    /* ──────────────────────────────────────────────────────────── */
+    const ADMIN_NAV = [
+      { id: 'dashboard',  label: 'Dashboard',     icon: 'layout-dashboard' },
+      { id: 'employees',  label: 'พนักงาน',        icon: 'users',  badge: () => EMPLOYEES.filter(e => !e.is_approved).length },
+      { id: 'projects',   label: 'โครงการ',        icon: 'building-2' },
+      { id: 'companies',  label: 'บริษัท',         icon: 'briefcase' },
+      { id: 'audit',      label: 'Audit log',     icon: 'file-text' },
+      { id: 'settings',   label: 'Settings',      icon: 'settings' },
+    ];
+    function renderAdmin() {
+      if (!state.adminTab) state.adminTab = 'employees';
+      const items = ADMIN_NAV.map(it => {
+        const active = it.id === state.adminTab;
+        const badge = it.badge && it.badge() > 0
+          ? `<span class="ml-auto rounded-full bg-brand-accent px-2 py-0.5 text-[10px] font-bold text-white">${it.badge()}</span>`
+          : '';
+        return `
+          <button onclick="setAdminNav('${it.id}')"
+            class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${active ? 'bg-brand-primary text-white shadow-soft' : 'text-slate-600 hover:bg-slate-100'}">
+            <i data-lucide="${it.icon}" class="h-4 w-4"></i>
+            <span>${it.label}</span>
+            ${badge}
+          </button>
+        `;
+      }).join('');
+      const card = h(`
+        <div class="mx-auto flex min-h-[calc(100vh-80px)] max-w-7xl gap-6 px-6 py-6">
+          <!-- Sidebar -->
+          <aside class="w-60 flex-shrink-0">
+            <div class="sticky top-24 rounded-2xl bg-white p-4 shadow-soft">
+              <div class="mb-4 flex items-center gap-2 px-2">
+                <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-primary/10 text-brand-primary"><i data-lucide="shield-check" class="h-4 w-4"></i></div>
+                <div>
+                  <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Admin</p>
+                  <p class="text-[10px] text-slate-400">${escape(state.auth.user?.name || '')}</p>
+                </div>
+              </div>
+              <nav class="space-y-1">${items}</nav>
+              <div class="mt-6 border-t border-slate-100 pt-4">
+                <a href="#wizard" class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-500 hover:bg-slate-100">
+                  <i data-lucide="arrow-left" class="h-4 w-4"></i>
+                  <span>กลับไปฟอร์ม</span>
+                </a>
+              </div>
+            </div>
+          </aside>
+
+          <!-- Main -->
+          <div id="admin-main" class="flex-1"></div>
+        </div>
+      `);
+      setTimeout(() => { renderAdminMain(); lucide.createIcons(); }, 0);
+      return card;
+    }
+    function setAdminNav(id) { state.adminTab = id; renderAdminMain(); lucide.createIcons(); }
+    function renderAdminMain() {
+      const root = $('#admin-main');
+      if (!root) return;
+      switch (state.adminTab) {
+        case 'employees': root.innerHTML = ''; root.appendChild(renderAdminEmployees()); break;
+        case 'dashboard': root.innerHTML = renderAdminDashboard(); break;
+        case 'projects':  root.innerHTML = renderAdminPlaceholder('โครงการ', 'building-2', 'จัดการโครงการของบริษัท · view all SkyBlue projects · drill-down progress'); break;
+        case 'companies': root.innerHTML = renderAdminPlaceholder('บริษัท', 'briefcase', 'SKY001 · EA001 · EXEC — view + edit company settings'); break;
+        case 'audit':     root.innerHTML = renderAdminPlaceholder('Audit log', 'file-text', 'ประวัติการแก้ไข · who changed what when (audit_logs table)'); break;
+        case 'settings':  root.innerHTML = renderAdminPlaceholder('Settings', 'settings', 'ตั้งค่า notifications · LINE webhook · n8n cron schedule'); break;
+      }
+      lucide.createIcons();
+      // re-update sidebar (badge/active highlight)
+      const sidebar = document.querySelector('aside nav');
+      if (sidebar && state.route === 'admin') {
+        // refresh sidebar in place
+        const items = ADMIN_NAV.map(it => {
+          const active = it.id === state.adminTab;
+          const badge = it.badge && it.badge() > 0
+            ? `<span class="ml-auto rounded-full bg-brand-accent px-2 py-0.5 text-[10px] font-bold text-white">${it.badge()}</span>`
+            : '';
+          return `
+            <button onclick="setAdminNav('${it.id}')"
+              class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${active ? 'bg-brand-primary text-white shadow-soft' : 'text-slate-600 hover:bg-slate-100'}">
+              <i data-lucide="${it.icon}" class="h-4 w-4"></i>
+              <span>${it.label}</span>
+              ${badge}
+            </button>
+          `;
+        }).join('');
+        sidebar.innerHTML = items;
+        lucide.createIcons();
+      }
+    }
+    function renderAdminDashboard() {
+      const totalEmp = EMPLOYEES.length;
+      const pending = EMPLOYEES.filter(e => !e.is_approved).length;
+      const approved = totalEmp - pending;
+      const byRole = {};
+      EMPLOYEES.forEach(e => { byRole[e.role_label] = (byRole[e.role_label] || 0) + 1; });
+      return `
+        <div class="rounded-2xl bg-white p-6 shadow-soft">
+          <h1 class="mb-1 text-2xl font-bold text-slate-800">📊 Dashboard</h1>
+          <p class="mb-6 text-sm text-slate-500">ภาพรวมระบบ Admin</p>
+          <div class="grid grid-cols-1 gap-4 md:grid-cols-4">
+            <div class="rounded-xl bg-brand-primary/5 p-5"><p class="text-xs text-slate-500">พนักงานทั้งหมด</p><p class="mt-1 text-3xl font-bold text-brand-primary">${totalEmp}</p></div>
+            <div class="rounded-xl bg-amber-50 p-5"><p class="text-xs text-slate-500">รออนุมัติ</p><p class="mt-1 text-3xl font-bold text-brand-accent">${pending}</p></div>
+            <div class="rounded-xl bg-emerald-50 p-5"><p class="text-xs text-slate-500">อนุมัติแล้ว</p><p class="mt-1 text-3xl font-bold text-brand-success">${approved}</p></div>
+            <div class="rounded-xl bg-slate-50 p-5"><p class="text-xs text-slate-500">บริษัท active</p><p class="mt-1 text-3xl font-bold text-slate-700">3</p></div>
+          </div>
+          <div class="mt-6 rounded-xl border border-slate-200 p-4">
+            <h3 class="mb-3 text-sm font-semibold text-slate-700">การกระจายตามตำแหน่ง</h3>
+            <div class="space-y-2">
+              ${Object.entries(byRole).map(([k, v]) => `
+                <div class="flex items-center gap-3">
+                  <span class="w-32 text-xs text-slate-600">${k}</span>
+                  <div class="h-3 flex-1 overflow-hidden rounded-full bg-slate-100"><div class="h-full bg-brand-primary" style="width:${(v/totalEmp*100).toFixed(0)}%"></div></div>
+                  <span class="w-10 text-right text-xs font-mono text-slate-700">${v}</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+    function renderAdminPlaceholder(title, icon, desc) {
+      return `
+        <div class="rounded-2xl bg-white p-6 shadow-soft">
+          <h1 class="mb-1 flex items-center gap-2 text-2xl font-bold text-slate-800">
+            <i data-lucide="${icon}" class="h-6 w-6 text-brand-primary"></i> ${title}
+          </h1>
+          <p class="mb-6 text-sm text-slate-500">${desc}</p>
+          <div class="flex h-64 items-center justify-center rounded-xl border-2 border-dashed border-slate-200 text-sm text-slate-400">
+            <div class="text-center">
+              <p class="mb-2 text-3xl">🚧</p>
+              <p>หน้านี้รอ implement (Phase 2)</p>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+    function renderAdminEmployees() {
+      const pending = EMPLOYEES.filter(e => !e.is_approved);
+      const approved = EMPLOYEES.filter(e => e.is_approved);
+      const card = h(`
+        <div class="rounded-2xl bg-white p-6 shadow-soft">
+          <div class="mb-6 flex items-center justify-between">
+            <div>
+              <h1 class="text-2xl font-bold text-slate-800">👥 จัดการพนักงาน</h1>
+              <p class="text-sm text-slate-500">อนุมัติ + กำหนด role/company</p>
+            </div>
+            <button onclick="openAddEmployeeModal()" class="flex items-center gap-2 rounded-xl bg-brand-primary px-4 py-2 text-sm font-semibold text-white hover:bg-brand-primary-dark">
+              <i data-lucide="user-plus" class="h-4 w-4"></i> เพิ่มพนักงานเอง
+            </button>
+          </div>
+          <div class="mb-5 flex gap-2 border-b border-slate-200">
+            <button onclick="setEmpTab('pending')" id="emp-tab-pending" class="border-b-2 px-4 py-3 text-sm font-medium border-brand-accent text-brand-accent">
+              ⚠️ รออนุมัติ <span class="ml-1 rounded-full bg-brand-accent px-2 py-0.5 text-[10px] font-bold text-white">${pending.length}</span>
+            </button>
+            <button onclick="setEmpTab('approved')" id="emp-tab-approved" class="border-b-2 border-transparent px-4 py-3 text-sm font-medium text-slate-500 hover:text-slate-700">
+              ✅ พนักงานทั้งหมด (${approved.length})
+            </button>
+          </div>
+          <div id="admin-tab-content"></div>
+        </div>
+      `);
+      setTimeout(() => renderAdminTab('pending', pending, approved), 0);
+      return card;
+    }
+    function setEmpTab(tab) { setAdminTab(tab); }
+    function setAdminTab(tab) {
+      const pending = EMPLOYEES.filter(e => !e.is_approved);
+      const approved = EMPLOYEES.filter(e => e.is_approved);
+      const tabPending = $('#emp-tab-pending') || $('#admin-tab-pending');
+      const tabApproved = $('#emp-tab-approved') || $('#admin-tab-approved');
+      if (tab === 'pending') {
+        if (tabPending) tabPending.className = 'border-b-2 px-4 py-3 text-sm font-medium border-brand-accent text-brand-accent';
+        if (tabApproved) tabApproved.className = 'border-b-2 border-transparent px-4 py-3 text-sm font-medium text-slate-500 hover:text-slate-700';
+      } else {
+        if (tabPending) tabPending.className = 'border-b-2 border-transparent px-4 py-3 text-sm font-medium text-slate-500 hover:text-slate-700';
+        if (tabApproved) tabApproved.className = 'border-b-2 px-4 py-3 text-sm font-medium border-brand-success text-brand-success';
+      }
+      renderAdminTab(tab, pending, approved);
+      lucide.createIcons();
+    }
+    function renderAdminTab(tab, pending, approved) {
+      const root = $('#admin-tab-content');
+      const list = tab === 'pending' ? pending : approved;
+      if (list.length === 0) {
+        root.innerHTML = `<div class="rounded-xl border-2 border-dashed border-slate-200 p-10 text-center text-sm text-slate-400">${tab === 'pending' ? 'ไม่มีพนักงานรออนุมัติ' : 'ยังไม่มีพนักงาน'}</div>`;
+        return;
+      }
+      const roleOpts = ROLE_LABELS.map(r => `<option value="${r.value}">${r.label}</option>`).join('');
+      root.innerHTML = `
+        <div class="overflow-hidden rounded-2xl bg-white shadow-soft">
+          <table class="w-full text-sm">
+            <thead class="bg-slate-50">
+              <tr class="text-left text-xs uppercase tracking-wide text-slate-500">
+                <th class="px-4 py-3">พนักงาน</th>
+                <th class="px-4 py-3">ติดต่อ</th>
+                <th class="px-4 py-3">ตำแหน่ง</th>
+                <th class="px-4 py-3">สถานะ</th>
+                <th class="px-4 py-3 text-right">การกระทำ</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              ${list.map(e => `
+                <tr>
+                  <td class="px-4 py-3">
+                    <div class="flex items-center gap-3">
+                      <div class="flex h-10 w-10 items-center justify-center rounded-full bg-brand-primary text-sm font-bold text-white">${escape(e.name.slice(0,1))}</div>
+                      <div>
+                        <p class="font-medium text-slate-800">${escape(e.name)}</p>
+                        <p class="text-xs text-slate-500">${escape(e.email)}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-4 py-3 text-xs text-slate-600">
+                    📞 ${escape(e.phone)}<br/>
+                    💬 ${escape(e.line_id)}
+                  </td>
+                  <td class="px-4 py-3">
+                    <select onchange="updateEmployeeRole('${e.id}', this.value)" class="input-base !py-1 !text-xs">${roleOpts.replace(`value="${e.role_label}"`, `value="${e.role_label}" selected`)}</select>
+                  </td>
+                  <td class="px-4 py-3">
+                    ${e.is_approved
+                      ? '<span class="rounded-full bg-brand-success/10 px-2 py-1 text-xs font-medium text-brand-success">✓ อนุมัติแล้ว</span>'
+                      : '<span class="rounded-full bg-brand-accent/10 px-2 py-1 text-xs font-medium text-brand-accent">⏳ รออนุมัติ</span>'}
+                  </td>
+                  <td class="px-4 py-3 text-right">
+                    ${e.is_approved
+                      ? `<button onclick="revokeEmployee('${e.id}')" class="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-brand-danger" title="ระงับ"><i data-lucide="user-x" class="h-4 w-4"></i></button>`
+                      : `<button onclick="approveEmployee('${e.id}')" class="rounded-lg bg-brand-success px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700">✓ อนุมัติ</button>
+                         <button onclick="rejectEmployee('${e.id}')" class="ml-1 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50">ปฏิเสธ</button>`}
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+      lucide.createIcons();
+    }
+    function approveEmployee(id) {
+      const e = EMPLOYEES.find(x => x.id === id);
+      if (e) { e.is_approved = true; toast(`อนุมัติ ${e.name} แล้ว`); renderAdminMain(); }
+    }
+    function rejectEmployee(id) {
+      const idx = EMPLOYEES.findIndex(x => x.id === id);
+      if (idx > -1) { EMPLOYEES.splice(idx, 1); toast('ปฏิเสธคำขอแล้ว', 'warning'); renderAdminMain(); }
+    }
+    function revokeEmployee(id) {
+      const e = EMPLOYEES.find(x => x.id === id);
+      if (e) { e.is_approved = false; toast(`ระงับ ${e.name} แล้ว`, 'warning'); renderAdminMain(); }
+    }
+    function updateEmployeeRole(id, role) {
+      const e = EMPLOYEES.find(x => x.id === id);
+      if (e) { e.role_label = role; toast(`เปลี่ยนตำแหน่ง ${e.name} เป็น ${role}`); }
+    }
+    function openAddEmployeeModal() {
+      toast('Modal เพิ่มพนักงาน (mock)', 'info');
+    }
+
+    /* ──────────────────────────────────────────────────────────── */
+    /*  WIZARD (5 steps + AI guide + progress)                       */
+    /* ──────────────────────────────────────────────────────────── */
+    function renderWizard(root) {
+      const wrap = h(`<div class="mx-auto max-w-7xl px-6 py-8 pb-32"><div id="step-content" class="fade-in"></div></div>`);
+      root.appendChild(wrap);
+      renderStep();
+    }
+    function renderStep() {
+      const root = $('#step-content');
+      if (!root) return;
+      root.innerHTML = '';
+      switch (state.currentStep) {
+        case 1: root.appendChild(renderStep1()); break;
+        case 2: root.appendChild(renderStep2()); break;
+        case 3: root.appendChild(renderStep3()); break;
+        case 4: root.appendChild(renderStep4()); break;
+        case 5: root.appendChild(renderStep5()); break;
+      }
+      lucide.createIcons();
+      renderProgress();
+      renderChecklist();
+      renderTips();
+    }
+    function renderProgress() {
+      const root = $('#progress-steps');
+      if (!root) return;
+      root.innerHTML = '';
+      STEPS.forEach((step, idx) => {
+        const isActive = step.id === state.currentStep;
+        const isDone = step.id < state.currentStep;
+        const dotClass = isActive ? 'bg-brand-primary text-white ring-4 ring-brand-primary/20'
+          : isDone ? 'bg-brand-success text-white' : 'bg-slate-200 text-slate-500';
+        const labelClass = isActive ? 'text-brand-primary font-semibold' : isDone ? 'text-brand-success' : 'text-slate-500';
+        root.appendChild(h(`
+          <div class="flex flex-1 items-center gap-2">
+            <button onclick="goToStep(${step.id})" class="flex items-center gap-3 transition hover:opacity-80">
+              <div class="flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold transition ${dotClass}">
+                ${isDone ? '<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>' : step.id}
+              </div>
+              <span class="hidden text-sm md:inline ${labelClass}">${step.label}</span>
+            </button>
+            ${idx < STEPS.length - 1 ? `<div class="h-0.5 flex-1 ${isDone ? 'bg-brand-success' : 'bg-slate-200'}"></div>` : ''}
+          </div>
+        `));
+      });
+    }
+    function renderChecklist() {
+      const ul = $('#checklist-list');
+      if (!ul) return;
+      ul.innerHTML = '';
+      const labels = { project_info: 'ข้อมูลโครงการ', contract: 'ข้อมูลสัญญา', milestones: 'งวดงาน', boq_materials: 'BOQ วัสดุ', boq_labor: 'BOQ ค่าแรง', team: 'ทีมงาน' };
+      Object.entries(state.checklist).forEach(([key, done]) => {
+        const status = done ? '✅' : '❌';
+        const cls = done ? 'text-brand-success' : 'text-slate-400';
+        ul.appendChild(h(`<li class="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2"><span class="${cls}">${status} ${labels[key]}</span></li>`));
+      });
+      const done = Object.values(state.checklist).filter(Boolean).length;
+      const pct = Math.round((done / 6) * 100);
+      ul.appendChild(h(`
+        <li class="mt-3 rounded-lg bg-brand-primary/5 px-3 py-3">
+          <div class="mb-1 flex items-center justify-between text-xs font-medium text-slate-600"><span>รวม</span><span>${done}/6 (${pct}%)</span></div>
+          <div class="h-2 w-full overflow-hidden rounded-full bg-white"><div class="h-full bg-brand-primary transition-all" style="width:${pct}%"></div></div>
+        </li>
+      `));
+    }
+    function renderTips() {
+      const tipMap = {
+        1: ['paste Google Maps URL ลงช่อง — ระบบจะ extract lat/lng ให้เอง', 'ใส่ link folder OneDrive ก่อน Phase 1 (Phase 2 จะเปลี่ยนเป็น Google Drive)'],
+        2: ['งวดหลักรวม % ของสัญญาให้ครบ 100%', 'เพิ่ม "Task หลัก" และ "หน่วยวัดความสำเร็จ" สำหรับ acceptance criteria', 'ตั้งระบบทวงถาม → ระบบจะส่ง LINE แจ้งล่วงหน้า'],
+        3: ['💡 ปุ่ม "Paste จาก Excel" copy multi-row จาก Excel ได้เลย', 'ตั้ง Default Supplier ก่อน — ระบบ auto-fill ทุก row', '🧩 Allocation: ใช้ "Auto Allocate" แบ่งเท่าๆกัน หรือ "Copy" จากแถวก่อนหน้า', 'ทุกแถวต้องรวม 100% ก่อนจะ "ถัดไป" ได้'],
+        4: ['🧩 Allocation ทำเหมือน Step 3 — ทุกแถวต้องครบ 100%', 'ใส่จำนวนแรง + วัน + หัวหน้าทีม เพื่อ track ค่าแรงรายวัน'],
+        5: ['LINE ID สำคัญที่สุด — HR ใช้ check-in GPS + จ่ายค่าแรง'],
+      };
+      const root = $('#ai-tips');
+      if (!root) return;
+      root.innerHTML = (tipMap[state.currentStep] || []).map(t => `<div class="rounded-lg border-l-4 border-brand-accent bg-orange-50 px-3 py-2"><p>${escape(t)}</p></div>`).join('');
+    }
+
+    /* ─── STEP 1 (split sub-tabs) ─────────────────────────────── */
+    function renderStep1() {
+      const card = h(`
+        <div class="rounded-2xl bg-white p-6 shadow-soft">
+          <div class="mb-6 flex items-center gap-3">
+            <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-primary/10 text-brand-primary"><i data-lucide="building-2" class="h-5 w-5"></i></div>
+            <div><h2 class="text-lg font-semibold text-slate-800">Step 1 · ข้อมูลโครงการ</h2><p class="text-xs text-slate-500">2 หัวข้อย่อย — กรอกได้ทั้ง 2 tab จะ validate ตอนกด "ถัดไป"</p></div>
+          </div>
+          <div class="mb-6 flex gap-2 border-b border-slate-200">
+            ${subTab('1A', 'ข้อมูลโครงการ', state.step1Tab === '1A', state.checklist.project_info)}
+            ${subTab('1B', 'ข้อมูลสัญญา', state.step1Tab === '1B', state.checklist.contract)}
+          </div>
+          <div id="subtab-content"></div>
+        </div>
+      `);
+      setTimeout(() => {
+        const sub = card.querySelector('#subtab-content');
+        sub.appendChild(state.step1Tab === '1A' ? renderTab1A() : renderTab1B());
+        lucide.createIcons();
+        if (state.step1Tab === '1B') renderContractFilesList();
+      }, 0);
+      return card;
+    }
+    function subTab(id, label, active, done) {
+      // v5: tabs are always clickable. Status icon shows progress (no lock).
+      const cls = active ? 'border-brand-primary text-brand-primary' : 'border-transparent text-slate-500 hover:text-slate-700';
+      const dot = done ? '✅' : active ? '●' : '○';
+      return `<button onclick="switchSubTab('${id}')" class="flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition ${cls}"><span>${dot}</span><span>${label}</span></button>`;
+    }
+    function renderTab1A() {
+      const empOpts = EMPLOYEES.filter(e => e.is_approved).map(e => `<option value="${e.id}">${escape(e.name)} (${e.role_label})</option>`).join('');
+      const ptOpts = PROJECT_TYPES.map(p => `<option value="${p.value}">${p.label}</option>`).join('');
+      return h(`
+       <div>
+        <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
+          <div class="md:col-span-2">
+            <label class="label-base required">ชื่อโครงการ</label>
+            <input id="f-project_name" class="input-base" placeholder="เช่น ก่อสร้างอาคาร อบต.บันนังสาเรง" value="${escape(state.info.project_name)}" oninput="state.info.project_name=this.value;updateChecklist1A();clearFieldError(this)" />
+          </div>
+          <div>
+            <label class="label-base required">ประเภทโครงการ</label>
+            <select class="input-base" onchange="state.info.project_type=this.value">${ptOpts}</select>
+          </div>
+          <div>
+            <label class="label-base required">ชื่อหน่วยงานเจ้าของงาน</label>
+            <input id="f-client_name" class="input-base" placeholder="อบต.บันนังสาเรง / สนง.เขตพื้นที่ฯ" value="${escape(state.info.client_name)}" oninput="state.info.client_name=this.value;updateChecklist1A();clearFieldError(this)" />
+          </div>
+          <div class="md:col-span-2">
+            <label class="label-base required">สถานที่โครงการ (ที่อยู่เต็ม)</label>
+            <textarea id="f-location_address" rows="2" class="input-base" placeholder="เลขที่... หมู่... ตำบล... อำเภอ... จังหวัด..." oninput="state.info.location_address=this.value;updateChecklist1A();clearFieldError(this)">${escape(state.info.location_address)}</textarea>
+          </div>
+          <!-- NEW v2: Google Maps URL paste -->
+          <div class="md:col-span-2">
+            <label class="label-base">📍 พิกัด GPS — paste link Google Maps</label>
+            <div class="flex gap-2">
+              <input id="maps-url" class="input-base flex-1" placeholder="https://maps.google.com/?q=13.7563,100.5018" value="${escape(state.info.google_maps_url)}" oninput="state.info.google_maps_url=this.value;extractLatLng()" />
+              <button onclick="useCurrentLocation()" class="flex items-center gap-1 whitespace-nowrap rounded-xl border border-brand-primary px-3 text-sm font-medium text-brand-primary hover:bg-brand-primary hover:text-white"><i data-lucide="map-pin" class="h-4 w-4"></i> ตำแหน่งปัจจุบัน</button>
+            </div>
+            <div id="latlng-preview" class="mt-2 text-xs text-slate-500">${state.info.location_lat ? `✓ Latitude: <b class="text-brand-success">${state.info.location_lat}</b> · Longitude: <b class="text-brand-success">${state.info.location_lng}</b>` : 'paste link → ระบบจะ auto extract lat/lng'}</div>
+          </div>
+          <div>
+            <label class="label-base required">Site Manager</label>
+            <select id="f-site_manager_id" class="input-base" onchange="state.info.site_manager_id=this.value;updateChecklist1A();clearFieldError(this)"><option value="">— เลือก —</option>${empOpts.replace(`value="${state.info.site_manager_id}"`, `value="${state.info.site_manager_id}" selected`)}</select>
+          </div>
+          <div>
+            <label class="label-base required">วิศวกรผู้รับผิดชอบ</label>
+            <select id="f-project_manager_id" class="input-base" onchange="state.info.project_manager_id=this.value;updateChecklist1A();clearFieldError(this)"><option value="">— เลือก —</option>${empOpts.replace(`value="${state.info.project_manager_id}"`, `value="${state.info.project_manager_id}" selected`)}</select>
+          </div>
+          <!-- NEW v2: OneDrive ส่วนตัว Boss (Phase 1) -->
+          <div class="md:col-span-2">
+            <label class="label-base">📁 OneDrive Folder URL (ส่วนตัว Boss วี — Phase 1)</label>
+            <input class="input-base" placeholder="https://onedrive.live.com/..." value="${escape(state.info.onedrive_folder_url)}" oninput="state.info.onedrive_folder_url=this.value" />
+            <p class="mt-1 text-xs text-slate-500">📌 Phase 1: ใช้ OneDrive ส่วนตัว Boss · Phase 2 จะเปลี่ยนเป็น Google Drive Picker</p>
+          </div>
+        </div>
+        <div class="mt-6 flex items-center justify-end gap-3 border-t border-slate-100 pt-4">
+          <button onclick="saveTab1A()" class="rounded-xl bg-brand-primary px-5 py-2 text-sm font-semibold text-white hover:bg-brand-primary-dark">บันทึก & ไปต่อ Tab 1B</button>
+        </div>
+       </div>
+      `);
+    }
+    function extractLatLng() {
+      const url = state.info.google_maps_url || '';
+      // Match patterns: ?q=lat,lng | @lat,lng | !3dlat!4dlng | /place/...,lat,lng
+      const patterns = [
+        /[?&]q=(-?\d+\.?\d*),(-?\d+\.?\d*)/,
+        /@(-?\d+\.?\d*),(-?\d+\.?\d*)/,
+        /!3d(-?\d+\.?\d*)!4d(-?\d+\.?\d*)/,
+        /(-?\d+\.\d+),\s*(-?\d+\.\d+)/,
+      ];
+      for (const p of patterns) {
+        const m = url.match(p);
+        if (m) {
+          state.info.location_lat = m[1];
+          state.info.location_lng = m[2];
+          const preview = $('#latlng-preview');
+          if (preview) preview.innerHTML = `✓ Latitude: <b class="text-brand-success">${m[1]}</b> · Longitude: <b class="text-brand-success">${m[2]}</b>`;
+          return;
+        }
+      }
+      // not found
+      if (url) {
+        const preview = $('#latlng-preview');
+        if (preview) preview.innerHTML = '⚠️ <span class="text-brand-danger">ไม่พบ lat/lng ใน URL</span>';
+      }
+    }
+    function renderTab1B() {
+      return h(`
+       <div>
+        <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
+          <div><label class="label-base required">เลขที่สัญญา</label><input id="f-contract_no" class="input-base" placeholder="เช่น 5/2568" value="${escape(state.contract.contract_no)}" oninput="state.contract.contract_no=this.value;updateChecklist1B();clearFieldError(this)" /></div>
+          <div>
+            <label class="label-base required">มูลค่าสัญญา (บาท)</label>
+            <input id="f-contract_value" class="input-base font-mono" type="text" inputmode="decimal" placeholder="19,040,000"
+                   value="${escape(formatThaiNumber(state.contract.contract_value))}"
+                   data-raw="${escape(state.contract.contract_value || '')}"
+                   onfocus="onNumFocus(this)"
+                   oninput="onNumInput(this, setContractField('contract_value'));clearFieldError(this)"
+                   onblur="onNumBlur(this, setContractField('contract_value'), commitContractAmount)" />
+          </div>
+          <div>
+            <label class="label-base">ประมาณการงบ (บาท)</label>
+            <input class="input-base font-mono" type="text" inputmode="decimal" placeholder="17,000,000"
+                   value="${escape(formatThaiNumber(state.contract.budget_estimate))}"
+                   data-raw="${escape(state.contract.budget_estimate || '')}"
+                   onfocus="onNumFocus(this)"
+                   oninput="onNumInput(this, setContractField('budget_estimate'))"
+                   onblur="onNumBlur(this, setContractField('budget_estimate'), renderContractPreview)" />
+          </div>
+          <div><label class="label-base">Deadline สำหรับ intake</label><input class="input-base" type="date" value="${escape(state.contract.intake_deadline)}" oninput="state.contract.intake_deadline=this.value" /></div>
+          <div><label class="label-base required">วันที่เริ่มสัญญา</label><input id="f-start_date" class="input-base" type="date" value="${escape(state.contract.start_date)}" oninput="state.contract.start_date=this.value;updateChecklist1B();clearFieldError(this)" /></div>
+          <div><label class="label-base required">วันที่สิ้นสุดสัญญา</label><input id="f-end_date" class="input-base" type="date" value="${escape(state.contract.end_date)}" oninput="state.contract.end_date=this.value;updateChecklist1B();clearFieldError(this)" /></div>
+        </div>
+
+        <!-- 📎 Contract attachments (v6 — visually highlighted) -->
+        <div class="mt-6 rounded-2xl border-2 border-brand-primary/30 bg-gradient-to-br from-brand-primary/5 to-brand-primary/10 p-5 shadow-soft">
+          <div class="mb-3 flex items-center justify-between">
+            <div>
+              <h3 class="flex items-center gap-2 text-base font-bold text-brand-primary">
+                📎 แนบเอกสารสัญญา
+                <span class="rounded-full bg-brand-accent px-2 py-0.5 text-[10px] font-bold text-white">NEW</span>
+                <span class="rounded-full bg-white px-2 py-0.5 text-[10px] font-medium text-slate-600 ring-1 ring-slate-200">${state.contract.contract_files.length} ไฟล์</span>
+              </h3>
+              <p class="mt-1 text-xs text-slate-600">อัปโหลดไฟล์สัญญา + ภาคผนวก เก็บไว้เป็นหลักฐานในอนาคต · PDF · DOC · DOCX · JPG · PNG · ไม่เกิน 10 MB</p>
+            </div>
+          </div>
+
+          <!-- Drop zone -->
+          <div id="contract-dropzone"
+               class="cursor-pointer rounded-xl border-2 border-dashed border-slate-300 bg-white px-6 py-8 text-center transition hover:border-brand-primary hover:bg-brand-primary/5"
+               onclick="document.getElementById('contract-file-input').click()"
+               ondragover="event.preventDefault();this.classList.add('border-brand-primary','bg-brand-primary/5')"
+               ondragleave="this.classList.remove('border-brand-primary','bg-brand-primary/5')"
+               ondrop="event.preventDefault();this.classList.remove('border-brand-primary','bg-brand-primary/5');handleContractFiles(event.dataTransfer.files)">
+            <i data-lucide="cloud-upload" class="mx-auto h-8 w-8 text-slate-400"></i>
+            <p class="mt-2 text-sm text-slate-600">คลิก หรือ ลากไฟล์มาวางที่นี่</p>
+            <p class="text-xs text-slate-400">หรือ paste ลิงก์ OneDrive ด้านล่าง ↓</p>
+          </div>
+          <input id="contract-file-input" type="file" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" class="hidden"
+                 onchange="handleContractFiles(this.files);this.value=''" />
+
+          <!-- Paste OneDrive URL alternative -->
+          <div class="mt-3 flex items-center gap-2">
+            <input id="contract-url-input" class="input-base flex-1" placeholder="หรือ paste ลิงก์ OneDrive ที่นี่ → กดปุ่ม + เพิ่ม" />
+            <button onclick="addContractFileByUrl()" class="rounded-xl bg-brand-primary px-4 py-2 text-sm font-semibold text-white hover:bg-brand-primary-dark">+ เพิ่ม</button>
+          </div>
+
+          <!-- File list -->
+          <div id="contract-files-list" class="mt-4 space-y-2"></div>
+        </div>
+
+        <div id="contract-preview" class="mt-5"></div>
+        <div class="mt-6 flex items-center justify-between border-t border-slate-100 pt-4">
+          <button onclick="switchSubTab('1A')" class="text-sm text-slate-500 hover:text-slate-700">← กลับ Tab 1A</button>
+          <button onclick="saveTab1B()" class="rounded-xl bg-brand-primary px-5 py-2 text-sm font-semibold text-white hover:bg-brand-primary-dark">บันทึก & ไปต่อ Step 2</button>
+        </div>
+       </div>
+      `);
+    }
+    /* ─── Contract attachments ─────────────────────────────────── */
+    const DOC_TYPES = [
+      { v: 'main',      l: 'สัญญาหลัก' },
+      { v: 'addendum',  l: 'ภาคผนวก' },
+      { v: 'amendment', l: 'แก้ไขสัญญา' },
+      { v: 'other',     l: 'อื่นๆ' },
+    ];
+    function fmtFileSize(bytes) {
+      if (!bytes || isNaN(bytes)) return '-';
+      const kb = bytes / 1024;
+      if (kb < 1024) return kb.toFixed(1) + ' KB';
+      return (kb / 1024).toFixed(2) + ' MB';
+    }
+    function getFileIcon(name) {
+      const ext = (name || '').split('.').pop().toLowerCase();
+      if (ext === 'pdf') return { icon: 'file-text', color: 'text-red-500' };
+      if (['doc', 'docx'].includes(ext)) return { icon: 'file-text', color: 'text-blue-500' };
+      if (['jpg', 'jpeg', 'png'].includes(ext)) return { icon: 'image', color: 'text-emerald-500' };
+      return { icon: 'file', color: 'text-slate-500' };
+    }
+    function handleContractFiles(fileList) {
+      const files = Array.from(fileList || []);
+      let added = 0, skipped = 0;
+      for (const f of files) {
+        if (f.size > 10 * 1024 * 1024) { skipped++; continue; } // 10 MB limit
+        state.contract.contract_files.push({
+          id: uid(),
+          name: f.name,
+          size: f.size,
+          type: f.type,
+          uploaded_at: new Date().toISOString(),
+          url: URL.createObjectURL(f), // local preview URL
+          doc_type: 'main',
+          source: 'upload',
+        });
+        added++;
+      }
+      if (added > 0) toast(`อัปโหลด ${added} ไฟล์สำเร็จ`);
+      if (skipped > 0) toast(`ข้าม ${skipped} ไฟล์ (เกิน 10 MB)`, 'warning');
+      renderContractFilesList();
+    }
+    function addContractFileByUrl() {
+      const inp = document.getElementById('contract-url-input');
+      if (!inp) return;
+      const url = inp.value.trim();
+      if (!url) return toast('paste URL ก่อน', 'danger');
+      const name = url.split('/').pop().split('?')[0] || 'OneDrive Link';
+      state.contract.contract_files.push({
+        id: uid(), name, size: 0, type: 'link', uploaded_at: new Date().toISOString(),
+        url, doc_type: 'main', source: 'onedrive',
+      });
+      inp.value = '';
+      toast('เพิ่มลิงก์เอกสารแล้ว');
+      renderContractFilesList();
+    }
+    function removeContractFile(id) {
+      state.contract.contract_files = state.contract.contract_files.filter(f => f.id !== id);
+      renderContractFilesList();
+    }
+    function updateContractFileDocType(id, docType) {
+      const f = state.contract.contract_files.find(x => x.id === id);
+      if (f) f.doc_type = docType;
+    }
+    function renderContractFilesList() {
+      const root = document.getElementById('contract-files-list');
+      if (!root) return;
+      const files = state.contract.contract_files;
+      if (files.length === 0) {
+        root.innerHTML = '<p class="text-center text-xs italic text-slate-400 py-2">ยังไม่มีไฟล์ที่แนบ</p>';
+        return;
+      }
+      root.innerHTML = files.map(f => {
+        const ic = getFileIcon(f.name);
+        const docOpts = DOC_TYPES.map(d => `<option value="${d.v}" ${f.doc_type === d.v ? 'selected' : ''}>${d.l}</option>`).join('');
+        const sourceBadge = f.source === 'onedrive'
+          ? '<span class="rounded bg-blue-100 px-2 py-0.5 text-[10px] font-medium text-blue-700">OneDrive</span>'
+          : '<span class="rounded bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-700">Upload</span>';
+        return `
+          <div class="flex items-center gap-3 rounded-xl bg-white p-3 ring-1 ring-slate-200">
+            <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-50">
+              <i data-lucide="${ic.icon}" class="h-5 w-5 ${ic.color}"></i>
+            </div>
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-2">
+                <p class="truncate text-sm font-medium text-slate-800">${escape(f.name)}</p>
+                ${sourceBadge}
+              </div>
+              <p class="text-xs text-slate-500">${fmtFileSize(f.size)} · ${new Date(f.uploaded_at).toLocaleString('th-TH')}</p>
+            </div>
+            <select class="input-base !w-32 !py-1 !text-xs" onchange="updateContractFileDocType('${f.id}', this.value)">${docOpts}</select>
+            <a href="${escape(f.url)}" target="_blank" class="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-brand-primary" title="เปิดดู">
+              <i data-lucide="external-link" class="h-4 w-4"></i>
+            </a>
+            <button onclick="removeContractFile('${f.id}')" class="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-brand-danger" title="ลบ">
+              <i data-lucide="trash-2" class="h-4 w-4"></i>
+            </button>
+          </div>
+        `;
+      }).join('');
+      lucide.createIcons();
+    }
+
+    function renderContractPreview() {
+      const root = document.getElementById('contract-preview');
+      if (!root) return;
+      const v = Number(state.contract.contract_value) || 0;
+      if (!v) { root.innerHTML = ''; return; }
+      const days = state.contract.start_date && state.contract.end_date
+        ? Math.max(0, Math.ceil((new Date(state.contract.end_date) - new Date(state.contract.start_date)) / 86400000)) : null;
+      root.innerHTML = `<div class="rounded-xl bg-slate-50 p-4 text-sm"><div class="grid grid-cols-1 gap-3 md:grid-cols-3">
+        <div><span class="text-slate-500">มูลค่าสัญญา:</span> <span class="font-semibold text-brand-primary">฿${fmtCurrency(v)}</span></div>
+        ${days !== null ? `<div><span class="text-slate-500">ระยะเวลา:</span> <span class="font-semibold">${days} วัน</span></div>` : ''}
+        ${state.contract.budget_estimate ? `<div><span class="text-slate-500">กำไรประมาณ:</span> <span class="font-semibold text-brand-success">฿${fmtCurrency(v - Number(state.contract.budget_estimate))}</span></div>` : ''}
+      </div></div>`;
+    }
+    function updateChecklist1A() {
+      const i = state.info;
+      state.checklist.project_info = !!(i.project_name?.length >= 5 && i.client_name && i.location_address && i.site_manager_id && i.project_manager_id);
+      renderChecklist();
+    }
+    function updateChecklist1B() {
+      const c = state.contract;
+      state.checklist.contract = !!(c.contract_no && c.contract_value && c.start_date && c.end_date);
+      renderChecklist();
+    }
+    /* commit handler for contract_value blur — refreshes preview + checklist */
+    function commitContractAmount() {
+      updateChecklist1B();
+      renderContractPreview();
+    }
+    function switchSubTab(id) {
+      // v5: free navigation — both tabs always clickable
+      state.step1Tab = id; renderStep();
+    }
+    /* v5: collect missing fields across both tabs and surface them clearly */
+    const REQUIRED_1A = [
+      { id: 'f-project_name', label: 'ชื่อโครงการ', tab: '1A', test: () => (state.info.project_name || '').length >= 1 },
+      { id: 'f-client_name',  label: 'ชื่อหน่วยงานเจ้าของงาน', tab: '1A', test: () => !!state.info.client_name },
+      { id: 'f-location_address', label: 'สถานที่โครงการ', tab: '1A', test: () => !!state.info.location_address },
+      { id: 'f-site_manager_id',  label: 'Site Manager', tab: '1A', test: () => !!state.info.site_manager_id },
+      { id: 'f-project_manager_id', label: 'วิศวกรผู้รับผิดชอบ', tab: '1A', test: () => !!state.info.project_manager_id },
+    ];
+    const REQUIRED_1B = [
+      { id: 'f-contract_no',    label: 'เลขที่สัญญา', tab: '1B', test: () => !!state.contract.contract_no },
+      { id: 'f-contract_value', label: 'มูลค่าสัญญา', tab: '1B', test: () => Number(state.contract.contract_value) > 0 },
+      { id: 'f-start_date',     label: 'วันที่เริ่มสัญญา', tab: '1B', test: () => !!state.contract.start_date },
+      { id: 'f-end_date',       label: 'วันที่สิ้นสุดสัญญา', tab: '1B', test: () => !!state.contract.end_date },
+    ];
+
+    function findMissing(fields) {
+      return fields.filter(f => !f.test());
+    }
+    function highlightField(el) {
+      if (!el) return;
+      el.classList.add('ring-2', 'ring-brand-danger', 'border-brand-danger');
+    }
+    function clearFieldError(el) {
+      if (!el) return;
+      el.classList.remove('ring-2', 'ring-brand-danger', 'border-brand-danger');
+    }
+    function focusFirstMissing(missing) {
+      if (missing.length === 0) return;
+      const first = missing[0];
+      // switch tab if needed
+      if (first.tab !== state.step1Tab) {
+        state.step1Tab = first.tab;
+        renderStep();
+        // re-highlight + scroll after re-render
+        setTimeout(() => {
+          missing.forEach(m => highlightField(document.getElementById(m.id)));
+          const el = document.getElementById(first.id);
+          if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus && el.focus(); }
+        }, 50);
+      } else {
+        missing.forEach(m => highlightField(document.getElementById(m.id)));
+        const el = document.getElementById(first.id);
+        if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus && el.focus(); }
+      }
+    }
+
+    function saveTab1A() {
+      updateChecklist1A();
+      const missing = findMissing(REQUIRED_1A);
+      if (missing.length > 0) {
+        toast(`ยังขาด ${missing.length} ฟิลด์: ${missing.map(m => m.label).join(', ')}`, 'danger');
+        focusFirstMissing(missing);
+        return;
+      }
+      toast('บันทึก Tab 1A สำเร็จ');
+      state.step1Tab = '1B'; renderStep();
+    }
+    function saveTab1B() {
+      updateChecklist1A(); updateChecklist1B();
+      // v5: cross-validate BOTH tabs at submit time
+      const missing = findMissing([...REQUIRED_1A, ...REQUIRED_1B]);
+      if (missing.length > 0) {
+        toast(`ยังขาด ${missing.length} ฟิลด์: ${missing.map(m => m.label).join(', ')}`, 'danger');
+        focusFirstMissing(missing);
+        return;
+      }
+      if (!state.projectCode) {
+        const seq = String(Math.floor(Math.random() * 999) + 1).padStart(3, '0');
+        state.projectCode = `SKB-26-${seq}`;
+      }
+      toast(`สร้างโครงการ ${state.projectCode} สำเร็จ`);
+      state.currentStep = 2; renderStep();
+    }
+    function useCurrentLocation() {
+      if (!navigator.geolocation) return toast('เบราว์เซอร์ไม่รองรับ', 'danger');
+      navigator.geolocation.getCurrentPosition(p => {
+        state.info.location_lat = p.coords.latitude.toFixed(7);
+        state.info.location_lng = p.coords.longitude.toFixed(7);
+        state.info.google_maps_url = `https://maps.google.com/?q=${state.info.location_lat},${state.info.location_lng}`;
+        renderStep(); toast('ดึงตำแหน่งแล้ว');
+      }, () => toast('ไม่สามารถดึงตำแหน่งได้', 'danger'));
+    }
+
+    /* ─── STEP 2 (Milestones + Gantt + Reminders) ─────────────── */
+    function renderStep2() {
+      const total = state.milestones.reduce((s, m) => s + Number(m.billing_amount || 0), 0);
+      const cv = Number(state.contract.contract_value) || 0;
+      const pct = cv > 0 ? (total / cv) * 100 : 0;
+      const card = h(`
+        <div class="rounded-2xl bg-white p-6 shadow-soft">
+          <div class="mb-6 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-primary/10 text-brand-primary"><i data-lucide="list-checks" class="h-5 w-5"></i></div>
+              <div><h2 class="text-lg font-semibold text-slate-800">Step 2 · งวดงาน + Gantt</h2><p class="text-xs text-slate-500">งวดหลัก + งวดย่อย + ระบบทวงถาม</p></div>
+            </div>
+            <button onclick="addMainMilestone()" class="flex items-center gap-2 rounded-xl bg-brand-primary px-4 py-2 text-sm font-semibold text-white hover:bg-brand-primary-dark">
+              <i data-lucide="plus" class="h-4 w-4"></i> เพิ่มงวดหลัก
+            </button>
+          </div>
+          <div class="mb-5 rounded-xl bg-slate-50 p-4">
+            <div class="mb-2 flex items-center justify-between text-sm">
+              <span class="font-medium text-slate-700">% ของสัญญาที่กระจายแล้ว</span>
+              <span class="font-bold ${Math.abs(pct - 100) < 0.01 ? 'text-brand-success' : 'text-brand-accent'}">${pct.toFixed(1)}% (${fmtCurrency(total)} / ${fmtCurrency(cv)} ฿)</span>
+            </div>
+            <div class="h-2 overflow-hidden rounded-full bg-white"><div class="h-full ${Math.abs(pct - 100) < 0.01 ? 'bg-brand-success' : 'bg-brand-accent'} transition-all" style="width:${Math.min(pct, 100)}%"></div></div>
+            ${pct < 100 ? `<p class="mt-2 text-xs text-brand-accent">⚠️ เหลือ ${(100-pct).toFixed(1)}% ที่ยังไม่กระจาย</p>` : pct > 100 ? `<p class="mt-2 text-xs text-brand-danger">⚠️ เกินมูลค่าสัญญา</p>` : `<p class="mt-2 text-xs text-brand-success">✅ ครบ 100%</p>`}
+          </div>
+          <div id="milestones-list" class="space-y-3"></div>
+          ${state.milestones.length === 0 ? `<div class="rounded-xl border-2 border-dashed border-slate-200 p-10 text-center text-sm text-slate-500">ยังไม่มีงวดงาน — กดปุ่มด้านบน</div>` : ''}
+          <div id="gantt-preview" class="mt-8"></div>
+        </div>
+      `);
+      setTimeout(() => {
+        const list = card.querySelector('#milestones-list');
+        state.milestones.forEach(m => list.appendChild(renderMilestoneItem(m)));
+        if (state.milestones.length > 0) renderGanttPreview(card.querySelector('#gantt-preview'));
+        lucide.createIcons();
+      }, 0);
+      return card;
+    }
+
+    function renderMilestoneItem(m) {
+      const cv = Number(state.contract.contract_value) || 0;
+      const pct = cv > 0 ? (Number(m.billing_amount || 0) / cv) * 100 : 0;
+      const empOpts = EMPLOYEES.filter(e => e.is_approved).map(e => `<option value="${e.id}" ${m.responsible_id === e.id ? 'selected' : ''}>${escape(e.name)}</option>`).join('');
+      const depOpts = state.milestones.filter(x => x.id !== m.id).map(x => `<option value="${x.id}" ${m.dependency_id === x.id ? 'selected' : ''}>${escape(x.name || '(ไม่มีชื่อ)')}</option>`).join('');
+      const stOpts = [
+        { v: 'pending', l: 'รอเริ่ม' }, { v: 'in_progress', l: 'กำลังทำ' },
+        { v: 'completed', l: 'เสร็จแล้ว' }, { v: 'delayed', l: 'ล่าช้า' },
+      ].map(s => `<option value="${s.v}" ${m.status === s.v ? 'selected' : ''}>${s.l}</option>`).join('');
+      const childCount = (m.children || []).length;
+      const reminderCount = (m.reminders || []).length;
+      const wrap = h(`
+        <div class="rounded-xl border border-slate-200 bg-white">
+          <details class="group" ${childCount > 0 ? 'open' : ''}>
+            <summary class="cursor-pointer list-none">
+              <div class="flex items-center justify-between gap-3 p-4">
+                <div class="flex flex-1 items-center gap-3">
+                  <i data-lucide="chevron-right" class="h-4 w-4 text-slate-400 transition group-open:rotate-90"></i>
+                  <span class="rounded-md bg-brand-primary px-2 py-0.5 text-xs font-bold text-white">หลัก</span>
+                  <input class="flex-1 border-none bg-transparent text-sm font-semibold text-slate-800 focus:outline-none focus:ring-0" placeholder="ชื่องวดงาน..." value="${escape(m.name || '')}" oninput="updateMilestone('${m.id}','name',this.value)" />
+                </div>
+                <div class="flex items-center gap-3 text-sm">
+                  ${reminderCount > 0 ? `<span class="rounded-md bg-orange-100 px-2 py-1 text-xs font-medium text-orange-700">🔔 ${reminderCount}</span>` : ''}
+                  <span class="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">${childCount} ย่อย</span>
+                  <span class="font-mono text-brand-primary">${pct.toFixed(1)}%</span>
+                  <button onclick="event.preventDefault();removeMilestone('${m.id}')" class="rounded-lg p-1 text-slate-400 hover:bg-red-50 hover:text-brand-danger"><i data-lucide="trash-2" class="h-4 w-4"></i></button>
+                </div>
+              </div>
+            </summary>
+            <div class="border-t border-slate-100 p-4">
+              <!-- Row 1: amounts (numeric pattern: no flicker) -->
+              <div class="grid grid-cols-1 gap-4 md:grid-cols-4">
+                <div>
+                  <label class="label-base">มูลค่าเบิก (วิศวกรประมาณ)</label>
+                  <input class="input-base font-mono"
+                         type="text" inputmode="decimal" placeholder="0"
+                         value="${escape(formatThaiNumber(m.billing_amount))}"
+                         data-raw="${escape(m.billing_amount || '')}"
+                         onfocus="onNumFocus(this)"
+                         oninput="onNumInput(this, setMilestoneField('${m.id}','billing_amount'))"
+                         onblur="onNumBlur(this, setMilestoneField('${m.id}','billing_amount'), commitMilestoneAmount)" />
+                  <p class="mt-1 text-[11px] text-slate-500" id="pct-${m.id}">% ของสัญญา: <b class="text-brand-primary">${pct.toFixed(2)}%</b></p>
+                </div>
+                <div>
+                  <label class="label-base">💰 ลูกค้าอนุมัติเพดาน (บาท)</label>
+                  <input class="input-base font-mono"
+                         type="text" inputmode="decimal" placeholder="0"
+                         value="${escape(formatThaiNumber(m.client_approved_amount))}"
+                         data-raw="${escape(m.client_approved_amount || '')}"
+                         onfocus="onNumFocus(this)"
+                         oninput="onNumInput(this, setMilestoneField('${m.id}','client_approved_amount'))"
+                         onblur="onNumBlur(this, setMilestoneField('${m.id}','client_approved_amount'))" />
+                </div>
+                <div>
+                  <label class="label-base">% ของสัญญา</label>
+                  <input class="input-base bg-slate-50 font-mono" readonly value="${pct.toFixed(2)}%" />
+                </div>
+                <div><label class="label-base">สถานะ</label><select class="input-base" onchange="updateMilestone('${m.id}','status',this.value)">${stOpts}</select></div>
+              </div>
+              <!-- Row 2: dates + responsibility (date inputs commit on change, not input) -->
+              <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-4">
+                <div><label class="label-base">วันเริ่มแผน</label><input class="input-base" type="date" value="${escape(m.plan_start_date || '')}" onchange="updateMilestoneAndRender('${m.id}','plan_start_date',this.value)" /></div>
+                <div><label class="label-base">วันสิ้นสุดแผน</label><input class="input-base" type="date" value="${escape(m.plan_end_date || '')}" onchange="updateMilestoneAndRender('${m.id}','plan_end_date',this.value)" /></div>
+                <div><label class="label-base">ผู้รับผิดชอบ</label><select class="input-base" onchange="updateMilestone('${m.id}','responsible_id',this.value)"><option value="">— เลือก —</option>${empOpts}</select></div>
+                <div><label class="label-base">ขึ้นกับงวด (Dependency)</label><select class="input-base" onchange="updateMilestone('${m.id}','dependency_id',this.value)"><option value="">— ไม่มี —</option>${depOpts}</select></div>
+              </div>
+              <!-- Row 3: tasks_summary + acceptance + notes -->
+              <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div>
+                  <label class="label-base">📋 Task หลักในงวดนี้</label>
+                  <textarea rows="3" class="input-base" placeholder="- งานสำรวจวางผัง&#10;- งานขุดดินฐานราก&#10;- งานเสาตอม่อ" oninput="updateMilestone('${m.id}','tasks_summary',this.value)">${escape(m.tasks_summary || '')}</textarea>
+                </div>
+                <div>
+                  <label class="label-base">✅ หน่วยวัดความสำเร็จ (Acceptance)</label>
+                  <textarea rows="3" class="input-base" placeholder="ตรวจรับโครงสร้างฐานรากจากวิศวกรโครงสร้าง" oninput="updateMilestone('${m.id}','acceptance_criteria',this.value)">${escape(m.acceptance_criteria || '')}</textarea>
+                </div>
+              </div>
+              <!-- Reminders sub-section -->
+              <div class="mt-5 rounded-xl border border-orange-200 bg-orange-50/40 p-4">
+                <div class="mb-3 flex items-center justify-between">
+                  <h4 class="text-sm font-semibold text-orange-700">🔔 ระบบทวงถาม</h4>
+                  <button onclick="addReminder('${m.id}')" class="flex items-center gap-1 text-xs font-medium text-orange-700 hover:underline"><i data-lucide="plus" class="h-3 w-3"></i> เพิ่มการแจ้งเตือน</button>
+                </div>
+                <div id="reminders-${m.id}" class="space-y-2"></div>
+              </div>
+              <!-- Sub-milestones -->
+              <div class="mt-5 border-t border-dashed border-slate-200 pt-4">
+                <div class="mb-3 flex items-center justify-between">
+                  <h4 class="text-xs font-semibold uppercase tracking-wide text-slate-500">งวดย่อยภายใน</h4>
+                  <button onclick="addSubMilestone('${m.id}')" class="flex items-center gap-1 text-xs font-medium text-brand-primary hover:underline"><i data-lucide="plus" class="h-3 w-3"></i> เพิ่มงวดย่อย</button>
+                </div>
+                <div id="children-${m.id}" class="space-y-2"></div>
+              </div>
+            </div>
+          </details>
+        </div>
+      `);
+      setTimeout(() => {
+        const cwrap = wrap.querySelector('#children-' + m.id);
+        (m.children || []).forEach(c => cwrap.appendChild(renderSubMilestone(m.id, c)));
+        if ((m.children || []).length === 0) cwrap.innerHTML = '<p class="text-xs italic text-slate-400">ไม่มีงวดย่อย</p>';
+        const rwrap = wrap.querySelector('#reminders-' + m.id);
+        (m.reminders || []).forEach(r => rwrap.appendChild(renderReminder(m.id, r)));
+        if ((m.reminders || []).length === 0) rwrap.innerHTML = '<p class="text-xs italic text-orange-600/70">ยังไม่มีการแจ้งเตือน — กดปุ่ม + เพิ่ม</p>';
+        lucide.createIcons();
+      }, 0);
+      return wrap;
+    }
+    function renderSubMilestone(parentId, c) {
+      return h(`
+        <div class="flex items-center gap-3 rounded-lg bg-slate-50 p-3 text-sm">
+          <span class="rounded bg-slate-300 px-2 py-0.5 text-xs font-medium text-slate-700">ย่อย</span>
+          <input class="flex-1 border-none bg-transparent focus:outline-none focus:ring-0" placeholder="ชื่องวดย่อย..." value="${escape(c.name || '')}" oninput="updateSub('${parentId}','${c.id}','name',this.value)" />
+          <input type="date" class="input-base !w-36" value="${escape(c.plan_start_date || '')}" oninput="updateSub('${parentId}','${c.id}','plan_start_date',this.value)" />
+          <input type="date" class="input-base !w-36" value="${escape(c.plan_end_date || '')}" oninput="updateSub('${parentId}','${c.id}','plan_end_date',this.value)" />
+          <div class="flex items-center gap-2"><input type="range" min="0" max="100" value="${c.progress || 0}" class="w-24" oninput="updateSub('${parentId}','${c.id}','progress',this.value);this.nextElementSibling.textContent=this.value+'%'" /><span class="w-10 text-xs font-mono text-slate-600">${c.progress || 0}%</span></div>
+          <button onclick="removeSub('${parentId}','${c.id}')" class="rounded-lg p-1 text-slate-400 hover:bg-red-50 hover:text-brand-danger"><i data-lucide="trash-2" class="h-3.5 w-3.5"></i></button>
+        </div>
+      `);
+    }
+    function renderReminder(milestoneId, r) {
+      const typeOpts = [
+        { v: 'before_start', l: 'ก่อนเริ่มงวด' },
+        { v: 'before_end', l: 'ก่อนถึง deadline' },
+        { v: 'overdue', l: 'หลังจาก overdue' },
+      ].map(o => `<option value="${o.v}" ${r.type === o.v ? 'selected' : ''}>${o.l}</option>`).join('');
+      const chOpts = [
+        { v: 'line', l: '💬 LINE' }, { v: 'email', l: '📧 Email' }, { v: 'app', l: '📱 In-app' },
+      ].map(o => `<option value="${o.v}" ${r.channel === o.v ? 'selected' : ''}>${o.l}</option>`).join('');
+      return h(`
+        <div class="flex items-center gap-2 rounded-lg bg-white p-2 text-xs ring-1 ring-orange-200">
+          <select class="input-base !py-1 !w-40 !text-xs" onchange="updateReminder('${milestoneId}','${r.id}','type',this.value)">${typeOpts}</select>
+          <input type="number" class="input-base !w-20 !py-1 !text-xs" placeholder="0" value="${r.offset || 0}" oninput="updateReminder('${milestoneId}','${r.id}','offset',this.value)" />
+          <span class="text-slate-500">วัน</span>
+          <select class="input-base !py-1 !w-32 !text-xs" onchange="updateReminder('${milestoneId}','${r.id}','channel',this.value)">${chOpts}</select>
+          <input class="input-base !py-1 flex-1 !text-xs" placeholder="ข้อความแจ้งเตือน..." value="${escape(r.message || '')}" oninput="updateReminder('${milestoneId}','${r.id}','message',this.value)" />
+          <button onclick="removeReminder('${milestoneId}','${r.id}')" class="rounded p-1 text-slate-400 hover:text-brand-danger"><i data-lucide="x" class="h-3.5 w-3.5"></i></button>
+        </div>
+      `);
+    }
+
+    /* ─── Gantt mini preview ─────────────────────────────────── */
+    function renderGanttPreview(root) {
+      const allDates = [];
+      state.milestones.forEach(m => {
+        if (m.plan_start_date) allDates.push(new Date(m.plan_start_date));
+        if (m.plan_end_date) allDates.push(new Date(m.plan_end_date));
+      });
+      if (allDates.length < 2) return;
+      const min = new Date(Math.min(...allDates));
+      const max = new Date(Math.max(...allDates));
+      const totalDays = (max - min) / 86400000 || 1;
+      let html = `
+        <h3 class="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-700">
+          <i data-lucide="bar-chart-3" class="h-4 w-4 text-brand-primary"></i> Gantt Chart Preview
+        </h3>
+        <div class="rounded-xl border border-slate-200 bg-white p-4">
+          <div class="mb-2 flex justify-between text-[11px] text-slate-500">
+            <span>${min.toLocaleDateString('th-TH')}</span>
+            <span>${max.toLocaleDateString('th-TH')}</span>
+          </div>
+          <div class="space-y-2">
+      `;
+      state.milestones.forEach((m, idx) => {
+        if (!m.plan_start_date || !m.plan_end_date) return;
+        const sOff = ((new Date(m.plan_start_date) - min) / 86400000 / totalDays) * 100;
+        const dur = (((new Date(m.plan_end_date) - new Date(m.plan_start_date)) / 86400000) / totalDays) * 100;
+        const colors = ['#1A5276', '#2874A6', '#F39C12', '#27AE60', '#E74C3C', '#7D3C98'];
+        html += `
+          <div class="flex items-center gap-2">
+            <div class="w-32 truncate text-xs text-slate-600" title="${escape(m.name || '(ไม่มีชื่อ)')}">${escape(m.name || '(ไม่มีชื่อ)')}</div>
+            <div class="relative h-6 flex-1 rounded bg-slate-100">
+              <div class="gantt-bar absolute h-full rounded shadow-sm" style="left:${sOff}%;width:${dur}%;background:${colors[idx % colors.length]}" title="${m.plan_start_date} → ${m.plan_end_date}"></div>
+              ${m.dependency_id ? `<div class="absolute -left-2 top-1/2 h-px w-2 bg-slate-400" style="left:${sOff}%"></div>` : ''}
+            </div>
+            <div class="w-20 text-right text-xs font-mono text-slate-500">${Math.ceil((new Date(m.plan_end_date) - new Date(m.plan_start_date)) / 86400000)} วัน</div>
+          </div>
+        `;
+      });
+      html += `</div></div>`;
+      root.innerHTML = html;
+    }
+
+    function addMainMilestone() {
+      state.milestones.push({ id: uid(), type: 'main', name: '', billing_amount: '', client_approved_amount: '', plan_start_date: '', plan_end_date: '', status: 'pending', responsible_id: '', dependency_id: '', tasks_summary: '', acceptance_criteria: '', children: [], reminders: [] });
+      updateChecklistMilestones();
+      renderStep();
+    }
+    function addSubMilestone(parentId) {
+      const p = state.milestones.find(m => m.id === parentId); if (!p) return;
+      p.children.push({ id: uid(), name: '', plan_start_date: '', plan_end_date: '', progress: 0 });
+      renderStep();
+    }
+    function addReminder(milestoneId) {
+      const m = state.milestones.find(x => x.id === milestoneId); if (!m) return;
+      if (!m.reminders) m.reminders = [];
+      m.reminders.push({ id: uid(), type: 'before_end', offset: 3, channel: 'line', message: '' });
+      renderStep();
+    }
+    function updateMilestone(id, field, val) { const m = state.milestones.find(x => x.id === id); if (m) m[field] = val; updateChecklistMilestones(); }
+    function updateMilestoneAndRender(id, field, val) {
+      const m = state.milestones.find(x => x.id === id); if (m) m[field] = val;
+      updateChecklistMilestones(); renderStep();
+    }
+    /* Called after blur of milestone billing_amount — refresh % + Gantt without rebuild while typing */
+    function commitMilestoneAmount() {
+      updateChecklistMilestones();
+      renderStep();
+    }
+    function updateSub(pid, sid, field, val) { const p = state.milestones.find(x => x.id === pid); if (!p) return; const s = p.children.find(x => x.id === sid); if (s) s[field] = val; }
+    function updateReminder(mid, rid, field, val) { const m = state.milestones.find(x => x.id === mid); if (!m) return; const r = m.reminders.find(x => x.id === rid); if (r) r[field] = val; }
+    function removeMilestone(id) { state.milestones = state.milestones.filter(m => m.id !== id); updateChecklistMilestones(); renderStep(); }
+    function removeSub(pid, sid) { const p = state.milestones.find(x => x.id === pid); if (!p) return; p.children = p.children.filter(c => c.id !== sid); renderStep(); }
+    function removeReminder(mid, rid) { const m = state.milestones.find(x => x.id === mid); if (!m) return; m.reminders = m.reminders.filter(r => r.id !== rid); renderStep(); }
+    function updateChecklistMilestones() {
+      const total = state.milestones.reduce((s, m) => s + Number(m.billing_amount || 0), 0);
+      const cv = Number(state.contract.contract_value) || 0;
+      state.checklist.milestones = state.milestones.length > 0 && cv > 0 && Math.abs(total - cv) < 0.01;
+      renderChecklist();
+    }
+
+    /* ─── STEP 3 + 4 (BOQ with Excel paste + supplier preset) ──── */
+    function renderStep3() { return renderBoqTable('materials'); }
+    function renderStep4() { return renderBoqTable('labor'); }
+    function renderBoqTable(type) {
+      const isMaterial = type === 'materials';
+      const rows = isMaterial ? state.materials : state.labor;
+      const cats = isMaterial ? MATERIAL_CATEGORIES : LABOR_CATEGORIES;
+      const supOpts = SUPPLIERS.map(s => `<option value="${s.id}" ${state.defaultSupplierId === s.id ? 'selected' : ''}>${escape(s.name)} (${s.category})</option>`).join('');
+      const grandTotal = rows.reduce((s, r) => s + (isMaterial
+        ? Number(r.quantity || 0) * (1 + Number(r.buffer || 0) / 100) * Number(r.unit_price || 0)
+        : Number(r.quantity || 0) * Number(r.rate_per_unit || 0)
+      ), 0);
+      const card = h(`
+        <div class="rounded-2xl bg-white p-6 shadow-soft">
+          <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+              <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-primary/10 text-brand-primary"><i data-lucide="${isMaterial ? 'package' : 'hammer'}" class="h-5 w-5"></i></div>
+              <div>
+                <h2 class="text-lg font-semibold text-slate-800">Step ${isMaterial ? 3 : 4} · BOQ ${isMaterial ? 'วัสดุ' : 'ค่าแรง'}</h2>
+                <p class="text-xs text-slate-500">paste จาก Excel ได้ + ตั้ง supplier preset</p>
+              </div>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button onclick="openExcelPasteModal('${type}')" class="flex items-center gap-2 rounded-xl border border-brand-primary px-4 py-2 text-sm font-semibold text-brand-primary hover:bg-brand-primary hover:text-white">
+                <i data-lucide="clipboard-paste" class="h-4 w-4"></i> 📋 Paste จาก Excel
+              </button>
+              <button onclick="addBoqRow('${type}')" class="flex items-center gap-2 rounded-xl bg-brand-primary px-4 py-2 text-sm font-semibold text-white hover:bg-brand-primary-dark">
+                <i data-lucide="plus" class="h-4 w-4"></i> เพิ่มรายการ
+              </button>
+            </div>
+          </div>
+          <!-- Supplier preset bar removed in v4 (engineers found it confusing).
+               Suppliers are still selectable per row via the dropdown column. -->
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
+                  <th class="px-2 py-2">#</th>
+                  <th class="px-2 py-2">หมวดหมู่</th>
+                  ${isMaterial ? '<th class="px-2 py-2">รหัสวัสดุ</th>' : ''}
+                  <th class="px-2 py-2">${isMaterial ? 'ชื่อวัสดุ' : 'ประเภท/รายละเอียดงาน'}</th>
+                  <th class="px-2 py-2">หน่วย</th>
+                  <th class="px-2 py-2">ปริมาณ</th>
+                  ${isMaterial ? '<th class="px-2 py-2">Buffer%</th>' : '<th class="px-2 py-2">จำนวนแรง</th><th class="px-2 py-2">วัน</th>'}
+                  <th class="px-2 py-2">${isMaterial ? 'ราคา/หน่วย' : 'อัตรา/หน่วย'}</th>
+                  <th class="px-2 py-2">${isMaterial ? 'ผู้จัดหา' : 'หัวหน้าทีม'}</th>
+                  <th class="px-2 py-2 text-right">รวม</th>
+                  <th class="px-2 py-2 text-center">งวด</th>
+                  <th class="px-2 py-2"></th>
+                </tr>
+              </thead>
+              <tbody id="boq-body" class="divide-y divide-slate-100"></tbody>
+              <tfoot>
+                <tr class="border-t-2 border-slate-300 font-semibold">
+                  <td colspan="${isMaterial ? 9 : 10}" class="px-2 py-3 text-right text-slate-600">รวมทั้งหมด:</td>
+                  <td class="px-2 py-3 text-right text-base font-bold text-brand-primary">฿${fmtCurrency(grandTotal)}</td>
+                  <td colspan="2"></td>
+                </tr>
+              </tfoot>
+            </table>
+            ${rows.length === 0 ? `<div class="py-10 text-center text-sm text-slate-400">ยังไม่มีรายการ — paste จาก Excel หรือกดเพิ่มรายการ</div>` : ''}
+          </div>
+          ${rows.length > 0 ? renderAllocationSummary(rows) : ''}
+        </div>
+      `);
+      setTimeout(() => {
+        const tbody = card.querySelector('#boq-body');
+        rows.forEach((r, i) => tbody.appendChild(renderBoqRow(type, r, i, cats)));
+        lucide.createIcons();
+      }, 0);
+      return card;
+    }
+    function renderAllocationSummary(rows) {
+      const s = getAllocationSummary(rows);
+      const total = rows.length;
+      const allOK = s.ok === total;
+      return `
+        <div class="mt-5 rounded-xl border ${allOK ? 'border-brand-success/30 bg-emerald-50' : 'border-amber-300 bg-amber-50'} p-4">
+          <div class="mb-2 flex items-center gap-2 text-sm font-semibold ${allOK ? 'text-brand-success' : 'text-amber-800'}">
+            📊 Allocation Summary
+            ${allOK ? '<span class="ml-auto rounded bg-brand-success px-2 py-0.5 text-xs text-white">พร้อมไปต่อ</span>' : '<span class="ml-auto rounded bg-amber-600 px-2 py-0.5 text-xs text-white">ยังไม่พร้อมไปต่อ</span>'}
+          </div>
+          <div class="grid grid-cols-2 gap-2 text-sm md:grid-cols-4">
+            <div class="rounded-lg bg-white p-3"><div class="text-xs text-slate-500">✅ ครบ 100%</div><div class="text-lg font-bold text-brand-success">${s.ok} <span class="text-xs font-normal text-slate-400">/${total}</span></div></div>
+            <div class="rounded-lg bg-white p-3"><div class="text-xs text-slate-500">⏳ ยังไม่ครบ</div><div class="text-lg font-bold text-amber-700">${s.partial}</div></div>
+            <div class="rounded-lg bg-white p-3"><div class="text-xs text-slate-500">⚠️ เกิน 100%</div><div class="text-lg font-bold text-brand-danger">${s.over}</div></div>
+            <div class="rounded-lg bg-white p-3"><div class="text-xs text-slate-500">➖ ยังไม่กำหนด</div><div class="text-lg font-bold text-slate-500">${s.none}</div></div>
+          </div>
+        </div>
+      `;
+    }
+    function renderBoqRow(type, r, idx, cats) {
+      const isMaterial = type === 'materials';
+      const catOpts = cats.map(c => `<option value="${c}" ${r.category === c ? 'selected' : ''}>${c}</option>`).join('');
+      const units = isMaterial ? UNITS_MAT : UNITS_LAB;
+      const unitOpts = units.map(u => `<option value="${u}" ${r.unit === u ? 'selected' : ''}>${u}</option>`).join('');
+      const supOpts = SUPPLIERS.map(s => `<option value="${s.id}" ${r.supplier_id === s.id ? 'selected' : ''}>${escape(s.name)}</option>`).join('');
+      const total = isMaterial
+        ? Number(r.quantity || 0) * (1 + Number(r.buffer || 0) / 100) * Number(r.unit_price || 0)
+        : Number(r.quantity || 0) * Number(r.rate_per_unit || 0);
+      const allocSum = (r.allocations || []).reduce((s, a) => s + Number(a.percent || 0), 0);
+      const allocCount = (r.allocations || []).length;
+      const allocStatus = getAllocStatus(allocSum, allocCount);
+      const allocBtn = allocCount === 0
+        ? `<button onclick="openAllocateModal('${type}','${r.id}')" class="rounded-lg bg-brand-accent/10 px-2 py-1 text-xs font-medium text-brand-accent hover:bg-brand-accent hover:text-white">+ กำหนด</button>`
+        : `<button onclick="openAllocateModal('${type}','${r.id}')" class="rounded-lg ${allocStatus.cls} px-2 py-1 text-xs font-medium" title="${escape(getAllocTooltip(r))}">${allocStatus.icon} ${allocSum.toFixed(0)}%</button>`;
+      return h(`
+        <tr>
+          <td class="px-2 py-2 text-xs text-slate-400">${idx + 1}</td>
+          <td class="px-2 py-2"><select class="input-base !py-1 !text-xs !w-32" onchange="updateBoqAndRender('${type}','${r.id}','category',this.value)"><option value="">—</option>${catOpts}</select></td>
+          ${isMaterial ? `<td class="px-2 py-2"><input class="input-base !py-1 !text-xs !w-28" placeholder="MAT-CON-001" value="${escape(r.material_code || '')}" oninput="updateBoq('${type}','${r.id}','material_code',this.value)" /></td>` : ''}
+          <td class="px-2 py-2"><input class="input-base !py-1 min-w-[200px]" placeholder="${isMaterial ? 'ชื่อวัสดุ' : 'รายละเอียดงาน'}" value="${escape((isMaterial ? r.item_name : r.work_description) || '')}" oninput="updateBoq('${type}','${r.id}','${isMaterial ? 'item_name' : 'work_description'}',this.value)" onblur="commitBoqRow()" /></td>
+          <td class="px-2 py-2"><select class="input-base !py-1 !w-20" onchange="updateBoqAndRender('${type}','${r.id}','unit',this.value)">${unitOpts}</select></td>
+          <td class="px-2 py-2"><input class="input-base !py-1 !w-20 font-mono" type="text" inputmode="decimal" value="${escape(formatThaiNumber(r.quantity))}" data-raw="${escape(r.quantity || '')}" onfocus="onNumFocus(this)" oninput="onNumInput(this, setBoqField('${type}','${r.id}','quantity'))" onblur="onNumBlur(this, setBoqField('${type}','${r.id}','quantity'), commitBoqRow)" /></td>
+          ${isMaterial
+            ? `<td class="px-2 py-2"><input class="input-base !py-1 !w-16 font-mono" type="text" inputmode="decimal" value="${escape(r.buffer || 5)}" data-raw="${escape(r.buffer || 5)}" onfocus="onNumFocus(this)" oninput="onNumInput(this, setBoqField('${type}','${r.id}','buffer'))" onblur="onNumBlur(this, setBoqField('${type}','${r.id}','buffer'), commitBoqRow)" /></td>`
+            : `<td class="px-2 py-2"><input class="input-base !py-1 !w-16 font-mono" type="text" inputmode="numeric" value="${escape(r.worker_count || '')}" data-raw="${escape(r.worker_count || '')}" onfocus="onNumFocus(this)" oninput="onNumInput(this, setBoqField('${type}','${r.id}','worker_count'))" onblur="onNumBlur(this, setBoqField('${type}','${r.id}','worker_count'), commitBoqRow)" /></td>
+               <td class="px-2 py-2"><input class="input-base !py-1 !w-16 font-mono" type="text" inputmode="numeric" value="${escape(r.duration_days || '')}" data-raw="${escape(r.duration_days || '')}" onfocus="onNumFocus(this)" oninput="onNumInput(this, setBoqField('${type}','${r.id}','duration_days'))" onblur="onNumBlur(this, setBoqField('${type}','${r.id}','duration_days'), commitBoqRow)" /></td>`}
+          <td class="px-2 py-2"><input class="input-base !py-1 !w-24 font-mono" type="text" inputmode="decimal" value="${escape(formatThaiNumber(isMaterial ? r.unit_price : r.rate_per_unit))}" data-raw="${escape((isMaterial ? r.unit_price : r.rate_per_unit) || '')}" onfocus="onNumFocus(this)" oninput="onNumInput(this, setBoqField('${type}','${r.id}','${isMaterial ? 'unit_price' : 'rate_per_unit'}'))" onblur="onNumBlur(this, setBoqField('${type}','${r.id}','${isMaterial ? 'unit_price' : 'rate_per_unit'}'), commitBoqRow)" /></td>
+          <td class="px-2 py-2">${isMaterial
+            ? `<select class="input-base !py-1 !text-xs min-w-[140px]" onchange="updateBoqAndRender('${type}','${r.id}','supplier_id',this.value)"><option value="">—</option>${supOpts}</select>`
+            : `<input class="input-base !py-1 !text-xs min-w-[120px]" placeholder="หัวหน้าทีม" value="${escape(r.team_leader || '')}" oninput="updateBoq('${type}','${r.id}','team_leader',this.value)" />`}</td>
+          <td class="px-2 py-2 text-right font-mono text-sm">฿${fmtCurrency(total)}</td>
+          <td class="px-2 py-2 text-center">${allocBtn}</td>
+          <td class="px-2 py-2"><button onclick="removeBoq('${type}','${r.id}')" class="rounded-lg p-1 text-slate-400 hover:bg-red-50 hover:text-brand-danger"><i data-lucide="trash-2" class="h-4 w-4"></i></button></td>
+        </tr>
+      `);
+    }
+    function addBoqRow(type) {
+      const arr = type === 'materials' ? state.materials : state.labor;
+      const row = type === 'materials'
+        ? { id: uid(), category: '', material_code: '', item_name: '', unit: 'ถุง', quantity: 0, buffer: 5, unit_price: 0, supplier_id: state.defaultSupplierId, allocations: [] }
+        : { id: uid(), category: '', work_description: '', unit: 'วัน', quantity: 0, worker_count: 0, duration_days: 0, rate_per_unit: 120, team_leader: '', planned_start_date: '', planned_end_date: '', allocations: [] };
+      arr.push(row); updateChecklistBoq(); renderStep();
+    }
+    function updateBoq(type, id, field, val) {
+      const arr = type === 'materials' ? state.materials : state.labor;
+      const r = arr.find(x => x.id === id); if (r) r[field] = val;
+    }
+    /* For text inputs that should re-render after edit (dropdowns/blur) */
+    function updateBoqAndRender(type, id, field, val) {
+      updateBoq(type, id, field, val); renderStep();
+    }
+    /* Called after blur of any BOQ numeric field — refresh totals + summary */
+    function commitBoqRow() {
+      updateChecklistBoq();
+      renderStep();
+    }
+    function removeBoq(type, id) {
+      if (type === 'materials') state.materials = state.materials.filter(x => x.id !== id);
+      else state.labor = state.labor.filter(x => x.id !== id);
+      updateChecklistBoq(); renderStep();
+    }
+    function isAllocOK(r) {
+      const allocs = (r.allocations || []).filter(a => a.phase_id);
+      if (allocs.length === 0) return false;
+      const sum = allocs.reduce((s, a) => s + Number(a.percent || 0), 0);
+      return Math.abs(sum - 100) < 0.01;
+    }
+    function updateChecklistBoq() {
+      state.checklist.boq_materials = state.materials.length > 0 && state.materials.every(r => r.item_name && r.quantity && r.unit_price && isAllocOK(r));
+      state.checklist.boq_labor = state.labor.length > 0 && state.labor.every(r => r.work_description && r.quantity && r.rate_per_unit && isAllocOK(r));
+      renderChecklist();
+    }
+    function getAllocStatus(sum, count) {
+      if (count === 0) return { icon: '+', cls: 'bg-brand-accent/10 text-brand-accent' };
+      if (Math.abs(sum - 100) < 0.01) return { icon: '✓', cls: 'bg-brand-success/10 text-brand-success' };
+      if (sum > 100) return { icon: '⚠️', cls: 'bg-brand-danger/10 text-brand-danger' };
+      return { icon: '⏳', cls: 'bg-amber-100 text-amber-700' };
+    }
+    function getAllocTooltip(r) {
+      if (!r.allocations || r.allocations.length === 0) return 'ยังไม่ได้กำหนดงวด';
+      return r.allocations.map(a => {
+        const phase = state.milestones.find(m => m.id === a.phase_id);
+        const sub = a.subphase_id ? phase?.children?.find(c => c.id === a.subphase_id) : null;
+        const label = phase ? (phase.name || '(ไม่มีชื่อ)') + (sub ? ' / ' + (sub.name || 'ย่อย') : '') : '?';
+        return `${label}: ${a.percent}%`;
+      }).join('\n');
+    }
+    function getAllocationSummary(rows) {
+      let ok = 0, partial = 0, over = 0, none = 0;
+      rows.forEach(r => {
+        const sum = (r.allocations || []).reduce((s, a) => s + Number(a.percent || 0), 0);
+        if (!r.allocations || r.allocations.length === 0) none++;
+        else if (Math.abs(sum - 100) < 0.01) ok++;
+        else if (sum > 100) over++;
+        else partial++;
+      });
+      return { ok, partial, over, none };
+    }
+    function setDefaultSupplier(id) { state.defaultSupplierId = id; toast('ตั้ง default supplier แล้ว', 'info'); }
+    function applySupplierToAll() {
+      if (!state.defaultSupplierId) return toast('กรุณาเลือก supplier ก่อน', 'danger');
+      state.materials.forEach(m => m.supplier_id = state.defaultSupplierId);
+      toast(`apply supplier กับ ${state.materials.length} แถว`);
+      renderStep();
+    }
+
+    /* ─── Excel paste modal ──────────────────────────────────── */
+    function openExcelPasteModal(type) {
+      const isMaterial = type === 'materials';
+      const example = isMaterial
+        ? 'คอนกรีต\tปูนซีเมนต์ตราช้าง 50 กก.\tถุง\t200\t120\nเหล็ก\tเหล็กเส้น SD40 12mm\tเส้น\t300\t185'
+        : 'งานโครงสร้าง\tงานเทคอนกรีตฐานราก\tลบ.ม.\t50\t1500\nงานสถาปัตย์\tงานก่ออิฐฉาบปูน\tตร.ม.\t200\t280';
+      const header = isMaterial
+        ? 'หมวดหมู่ → ชื่อวัสดุ → หน่วย → ปริมาณ → ราคา/หน่วย'
+        : 'ประเภท → รายละเอียดงาน → หน่วย → ปริมาณ → อัตรา/หน่วย';
+      const modal = h(`
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 fade-in" onclick="if(event.target===this)closeModal()">
+          <div class="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl">
+            <div class="mb-4 flex items-center justify-between">
+              <h3 class="text-lg font-semibold text-slate-800">📋 Paste จาก Excel</h3>
+              <button onclick="closeModal()" class="rounded-lg p-1 text-slate-400 hover:bg-slate-100"><i data-lucide="x" class="h-5 w-5"></i></button>
+            </div>
+            <p class="mb-2 text-sm text-slate-600">copy หลายแถวจาก Excel แล้ว paste ลงด้านล่าง</p>
+            <p class="mb-3 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500">รูปแบบ: <b>${header}</b> (คั่นด้วย Tab — Excel ทำให้อัตโนมัติเมื่อ copy)</p>
+            <textarea id="excel-paste-area" rows="8" class="input-base font-mono text-xs" placeholder="${escape(example)}"></textarea>
+            <div class="mt-3 flex items-center justify-between gap-2">
+              <button onclick="$('#excel-paste-area').value='${example.replace(/'/g, "\\'").replace(/\n/g, '\\n')}'" class="text-xs text-brand-primary hover:underline">ลองใส่ตัวอย่าง</button>
+              <div class="flex gap-2">
+                <button onclick="closeModal()" class="rounded-xl px-4 py-2 text-sm text-slate-600 hover:bg-slate-100">ยกเลิก</button>
+                <button onclick="parseExcelPaste('${type}')" class="rounded-xl bg-brand-primary px-5 py-2 text-sm font-semibold text-white hover:bg-brand-primary-dark">Parse → เพิ่มลงตาราง</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `);
+      $('#modal-root').appendChild(modal);
+      lucide.createIcons();
+    }
+    function parseExcelPaste(type) {
+      const txt = $('#excel-paste-area').value.trim();
+      if (!txt) { toast('paste ก่อนสิ', 'danger'); return; }
+      const lines = txt.split('\n').map(l => l.split('\t'));
+      const isMaterial = type === 'materials';
+      let added = 0;
+      lines.forEach(cols => {
+        if (cols.length < 4) return;
+        const [c1, c2, c3, c4, c5] = cols;
+        if (isMaterial) {
+          state.materials.push({
+            id: uid(), category: c1, material_code: '', item_name: c2,
+            unit: c3, quantity: Number(c4) || 0, buffer: 5,
+            unit_price: Number(c5) || 0, supplier_id: state.defaultSupplierId, allocations: [],
+          });
+        } else {
+          state.labor.push({
+            id: uid(), category: c1, work_description: c2,
+            unit: c3, quantity: Number(c4) || 0, worker_count: 0, duration_days: 0,
+            rate_per_unit: Number(c5) || 120, team_leader: '', allocations: [],
+          });
+        }
+        added++;
+      });
+      closeModal();
+      toast(`เพิ่ม ${added} รายการจาก paste สำเร็จ`);
+      updateChecklistBoq();
+      renderStep();
+    }
+
+    /* ─── Allocate modal v3 — Phase + Sub-phase + multi-row ─────── */
+    function openAllocateModal(type, rowId) {
+      const arr = type === 'materials' ? state.materials : state.labor;
+      const r = arr.find(x => x.id === rowId);
+      const phases = state.milestones.filter(m => m.type === 'main');
+      if (phases.length === 0) return toast('ยังไม่มีงวดงาน — กรอก Step 2 ก่อน', 'danger');
+      if (!r.allocations) r.allocations = [];
+      // ถ้ายังไม่มี allocation เลย → สร้าง 1 row แรกให้
+      if (r.allocations.length === 0) r.allocations.push({ id: uid(), phase_id: '', subphase_id: '', percent: 0 });
+
+      const idx = arr.findIndex(x => x.id === rowId);
+      const prevRow = idx > 0 ? arr[idx - 1] : null;
+      const canCopy = prevRow && prevRow.allocations && prevRow.allocations.length > 0;
+
+      const modal = h(`
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 fade-in" onclick="if(event.target===this)closeModal()">
+          <div class="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl">
+            <div class="mb-4 flex items-center justify-between">
+              <div>
+                <h3 class="text-lg font-semibold text-slate-800">🧩 กำหนด Allocation</h3>
+                <p class="text-xs text-slate-500">${escape(type === 'materials' ? r.item_name || '(วัสดุ)' : r.work_description || '(งาน)')} — กระจายไปแต่ละงวด</p>
+              </div>
+              <button onclick="closeModal()" class="rounded-lg p-1 text-slate-400 hover:bg-slate-100"><i data-lucide="x" class="h-5 w-5"></i></button>
+            </div>
+
+            <!-- Quick action buttons -->
+            <div class="mb-4 flex flex-wrap gap-2">
+              <button onclick="autoAllocate('${type}','${rowId}')" class="flex items-center gap-1 rounded-lg bg-brand-primary/10 px-3 py-1.5 text-xs font-medium text-brand-primary hover:bg-brand-primary hover:text-white">
+                <i data-lucide="wand-2" class="h-3 w-3"></i> Auto Allocate (เท่าๆกัน)
+              </button>
+              ${canCopy ? `<button onclick="copyFromPrevious('${type}','${rowId}')" class="flex items-center gap-1 rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-200"><i data-lucide="copy" class="h-3 w-3"></i> Copy จากแถวก่อนหน้า</button>` : ''}
+              <button onclick="addAllocationRow('${type}','${rowId}')" class="flex items-center gap-1 rounded-lg bg-brand-accent/10 px-3 py-1.5 text-xs font-medium text-brand-accent hover:bg-brand-accent hover:text-white">
+                <i data-lucide="plus" class="h-3 w-3"></i> เพิ่มการกระจายงวด
+              </button>
+              <button onclick="clearAllocations('${type}','${rowId}')" class="ml-auto rounded-lg px-3 py-1.5 text-xs font-medium text-slate-500 hover:bg-slate-100">ล้างทั้งหมด</button>
+            </div>
+
+            <!-- Allocation rows -->
+            <div id="alloc-rows" class="space-y-2 max-h-80 overflow-y-auto scroll-thin pr-1"></div>
+
+            <!-- Sum status -->
+            <div id="alloc-status" class="mt-4 rounded-xl border-2 p-3 text-center"></div>
+
+            <div class="mt-5 flex items-center justify-end gap-2">
+              <button onclick="closeModal()" class="rounded-xl px-4 py-2 text-sm text-slate-600 hover:bg-slate-100">ยกเลิก</button>
+              <button onclick="saveAllocations('${type}','${rowId}')" class="rounded-xl bg-brand-primary px-5 py-2 text-sm font-semibold text-white hover:bg-brand-primary-dark">บันทึก</button>
+            </div>
+          </div>
+        </div>
+      `);
+      $('#modal-root').appendChild(modal);
+      renderAllocRows(type, rowId);
+      lucide.createIcons();
+    }
+    function renderAllocRows(type, rowId) {
+      const arr = type === 'materials' ? state.materials : state.labor;
+      const r = arr.find(x => x.id === rowId);
+      const phases = state.milestones.filter(m => m.type === 'main');
+      const root = document.querySelector('#alloc-rows');
+      if (!root) return;
+      root.innerHTML = '';
+      r.allocations.forEach((a, i) => {
+        if (!a.id) a.id = uid();
+        const phase = phases.find(p => p.id === a.phase_id);
+        const subs = phase ? (phase.children || []) : [];
+        const phaseOpts = phases.map(p => `<option value="${p.id}" ${a.phase_id === p.id ? 'selected' : ''}>งวด ${state.milestones.indexOf(p) + 1}: ${escape(p.name || '(ไม่มีชื่อ)')}</option>`).join('');
+        const subOpts = subs.map(s => `<option value="${s.id}" ${a.subphase_id === s.id ? 'selected' : ''}>${escape(s.name || 'ย่อย')}</option>`).join('');
+        root.appendChild(h(`
+          <div class="grid grid-cols-12 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50/50 p-3">
+            <div class="col-span-1 text-center text-xs text-slate-400 font-mono">#${i + 1}</div>
+            <div class="col-span-5">
+              <select class="input-base !text-xs !py-1.5" onchange="updateAlloc('${type}','${rowId}','${a.id}','phase_id',this.value)">
+                <option value="">— เลือกงวดหลัก —</option>${phaseOpts}
+              </select>
+            </div>
+            <div class="col-span-3">
+              <select class="input-base !text-xs !py-1.5" ${subs.length === 0 ? 'disabled' : ''} onchange="updateAlloc('${type}','${rowId}','${a.id}','subphase_id',this.value)">
+                <option value="">${subs.length === 0 ? '(ไม่มีงวดย่อย)' : '— ทั้งงวดหลัก —'}</option>${subOpts}
+              </select>
+            </div>
+            <div class="col-span-2">
+              <div class="flex items-center gap-1">
+                <input class="input-base !text-xs !py-1.5 text-right" type="number" min="0" max="100" step="0.1" value="${a.percent || 0}" oninput="updateAlloc('${type}','${rowId}','${a.id}','percent',this.value)" />
+                <span class="text-xs text-slate-500">%</span>
+              </div>
+            </div>
+            <div class="col-span-1 text-right">
+              <button onclick="removeAlloc('${type}','${rowId}','${a.id}')" class="rounded p-1 text-slate-400 hover:text-brand-danger"><i data-lucide="trash-2" class="h-3.5 w-3.5"></i></button>
+            </div>
+          </div>
+        `));
+      });
+      updateAllocStatus(type, rowId);
+      lucide.createIcons();
+    }
+    function updateAlloc(type, rowId, allocId, field, val) {
+      const arr = type === 'materials' ? state.materials : state.labor;
+      const r = arr.find(x => x.id === rowId);
+      const a = r.allocations.find(x => x.id === allocId);
+      if (a) {
+        a[field] = field === 'percent' ? (Number(val) || 0) : val;
+        if (field === 'phase_id') a.subphase_id = ''; // reset sub when phase changes
+      }
+      // re-render rows ทั้งหมด (เพราะ sub dropdown ต้อง refresh ตาม phase)
+      if (field === 'phase_id') renderAllocRows(type, rowId);
+      else updateAllocStatus(type, rowId);
+    }
+    function removeAlloc(type, rowId, allocId) {
+      const arr = type === 'materials' ? state.materials : state.labor;
+      const r = arr.find(x => x.id === rowId);
+      r.allocations = r.allocations.filter(x => x.id !== allocId);
+      renderAllocRows(type, rowId);
+    }
+    function addAllocationRow(type, rowId) {
+      const arr = type === 'materials' ? state.materials : state.labor;
+      const r = arr.find(x => x.id === rowId);
+      r.allocations.push({ id: uid(), phase_id: '', subphase_id: '', percent: 0 });
+      renderAllocRows(type, rowId);
+    }
+    function clearAllocations(type, rowId) {
+      const arr = type === 'materials' ? state.materials : state.labor;
+      const r = arr.find(x => x.id === rowId);
+      r.allocations = [{ id: uid(), phase_id: '', subphase_id: '', percent: 0 }];
+      renderAllocRows(type, rowId);
+    }
+    function autoAllocate(type, rowId) {
+      const arr = type === 'materials' ? state.materials : state.labor;
+      const r = arr.find(x => x.id === rowId);
+      const phases = state.milestones.filter(m => m.type === 'main');
+      if (phases.length === 0) return toast('ยังไม่มีงวด', 'danger');
+      const pct = Math.floor(10000 / phases.length) / 100; // 100 / N rounded
+      r.allocations = phases.map((p, i) => ({
+        id: uid(),
+        phase_id: p.id,
+        subphase_id: '',
+        // ใส่เศษไว้ที่งวดสุดท้ายให้รวม 100% พอดี
+        percent: i === phases.length - 1 ? Number((100 - pct * (phases.length - 1)).toFixed(2)) : pct,
+      }));
+      renderAllocRows(type, rowId);
+      toast(`Auto allocate ${phases.length} งวด เท่าๆกัน`);
+    }
+    function copyFromPrevious(type, rowId) {
+      const arr = type === 'materials' ? state.materials : state.labor;
+      const idx = arr.findIndex(x => x.id === rowId);
+      if (idx <= 0) return;
+      const prev = arr[idx - 1];
+      if (!prev.allocations || prev.allocations.length === 0) return toast('แถวก่อนหน้าไม่มี allocation', 'danger');
+      const r = arr[idx];
+      r.allocations = prev.allocations.map(a => ({ ...a, id: uid() }));
+      renderAllocRows(type, rowId);
+      toast('คัดลอก allocation จากแถวก่อนหน้าสำเร็จ');
+    }
+    function updateAllocStatus(type, rowId) {
+      const arr = type === 'materials' ? state.materials : state.labor;
+      const r = arr.find(x => x.id === rowId);
+      const sum = r.allocations.reduce((s, a) => s + Number(a.percent || 0), 0);
+      const hasInvalid = r.allocations.some(a => !a.phase_id);
+      const root = document.querySelector('#alloc-status');
+      if (!root) return;
+      let cls = 'border-amber-300 bg-amber-50 text-amber-800';
+      let icon = '⏳';
+      let msg = `ยังไม่ครบ 100% (ตอนนี้ ${sum.toFixed(1)}%)`;
+      if (hasInvalid) {
+        cls = 'border-red-300 bg-red-50 text-red-800';
+        icon = '❌';
+        msg = 'มีแถวที่ยังไม่เลือกงวดหลัก';
+      } else if (Math.abs(sum - 100) < 0.01) {
+        cls = 'border-brand-success/40 bg-emerald-50 text-brand-success';
+        icon = '✅';
+        msg = 'รวมครบ 100% — บันทึกได้';
+      } else if (sum > 100) {
+        cls = 'border-red-300 bg-red-50 text-red-800';
+        icon = '⚠️';
+        msg = `เกิน 100% (${sum.toFixed(1)}%)`;
+      }
+      // duplicate phase+sub check
+      const seen = new Set();
+      for (const a of r.allocations) {
+        if (!a.phase_id) continue;
+        const key = `${a.phase_id}|${a.subphase_id || ''}`;
+        if (seen.has(key)) {
+          cls = 'border-red-300 bg-red-50 text-red-800';
+          icon = '⚠️';
+          msg = 'มีงวด+งวดย่อยซ้ำกัน';
+          break;
+        }
+        seen.add(key);
+      }
+      root.className = `mt-4 rounded-xl border-2 p-3 text-center font-semibold ${cls}`;
+      root.innerHTML = `${icon} ${msg}`;
+    }
+    function closeModal() { $('#modal-root').innerHTML = ''; }
+    function saveAllocations(type, rowId) {
+      const arr = type === 'materials' ? state.materials : state.labor;
+      const r = arr.find(x => x.id === rowId);
+      // ลบ allocation rows ที่ไม่มี phase
+      r.allocations = r.allocations.filter(a => a.phase_id);
+      const sum = r.allocations.reduce((s, a) => s + Number(a.percent || 0), 0);
+      if (r.allocations.length === 0) return toast('ต้องมีอย่างน้อย 1 งวด', 'danger');
+      if (Math.abs(sum - 100) > 0.01) return toast(`ต้องได้ 100% (ตอนนี้ ${sum.toFixed(1)}%)`, 'danger');
+      // duplicate check
+      const seen = new Set();
+      for (const a of r.allocations) {
+        const key = `${a.phase_id}|${a.subphase_id || ''}`;
+        if (seen.has(key)) return toast('มีงวด+งวดย่อยซ้ำกัน', 'danger');
+        seen.add(key);
+      }
+      closeModal(); toast('บันทึก allocation สำเร็จ');
+      updateChecklistBoq(); renderStep();
+    }
+
+    /* ─── STEP 5 (Site Team) ─────────────────────────────────── */
+    function renderStep5() {
+      const card = h(`
+        <div class="rounded-2xl bg-white p-6 shadow-soft">
+          <div class="mb-6 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-primary/10 text-brand-primary"><i data-lucide="users" class="h-5 w-5"></i></div>
+              <div><h2 class="text-lg font-semibold text-slate-800">Step 5 · ทีมงานหน้างาน</h2><p class="text-xs text-slate-500">LINE ID = HR check-in GPS + จ่ายค่าแรง</p></div>
+            </div>
+            <button onclick="addMember()" class="flex items-center gap-2 rounded-xl bg-brand-primary px-4 py-2 text-sm font-semibold text-white hover:bg-brand-primary-dark"><i data-lucide="user-plus" class="h-4 w-4"></i> เพิ่มสมาชิก</button>
+          </div>
+          <div id="team-cards" class="grid grid-cols-1 gap-4 md:grid-cols-2"></div>
+          ${state.team.length === 0 ? `<div class="rounded-xl border-2 border-dashed border-slate-200 p-10 text-center text-sm text-slate-500">ยังไม่มีสมาชิก</div>` : ''}
+          <div class="mt-8 border-t border-slate-200 pt-6">
+            <button onclick="finalSubmit()" ${allDone() ? '' : 'disabled'} class="w-full rounded-xl bg-brand-success px-6 py-4 text-base font-bold text-white shadow-soft transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50">🎉 ส่งข้อมูลเข้าระบบ</button>
+            ${!allDone() ? `<p class="mt-2 text-center text-xs text-brand-danger">⚠️ ยังกรอกไม่ครบ — เปิด AI Guide ดูว่าขาดอะไร</p>` : '<p class="mt-2 text-center text-xs text-brand-success">✅ พร้อมส่งแล้ว</p>'}
+          </div>
+        </div>
+      `);
+      setTimeout(() => {
+        const grid = card.querySelector('#team-cards');
+        state.team.forEach((p, idx) => grid.appendChild(renderTeamCard(p, idx)));
+        lucide.createIcons();
+      }, 0);
+      return card;
+    }
+    function renderTeamCard(p, idx) {
+      const roleOpts = ROLE_LABELS.map(r => `<option value="${r.value}" ${p.role_label === r.value ? 'selected' : ''}>${r.label}</option>`).join('');
+      return h(`
+        <div class="rounded-xl border border-slate-200 bg-white p-4">
+          <div class="mb-3 flex items-center justify-between"><span class="text-xs font-medium text-slate-400">#${idx + 1}</span><button onclick="removeMember('${p.id}')" class="rounded p-1 text-slate-400 hover:bg-red-50 hover:text-brand-danger"><i data-lucide="trash-2" class="h-4 w-4"></i></button></div>
+          <div class="space-y-3">
+            <div><label class="label-base required">ชื่อ-นามสกุล</label><input class="input-base" value="${escape(p.full_name || '')}" oninput="updateMember('${p.id}','full_name',this.value)" /></div>
+            <div class="grid grid-cols-2 gap-2">
+              <div><label class="label-base">ตำแหน่ง</label><select class="input-base" onchange="updateMember('${p.id}','role_label',this.value)">${roleOpts}</select></div>
+              <div><label class="label-base">วันเริ่มงาน</label><input class="input-base" type="date" value="${escape(p.start_date || '')}" oninput="updateMember('${p.id}','start_date',this.value)" /></div>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div><label class="label-base required">เบอร์โทร</label><input class="input-base" placeholder="08X-XXX-XXXX" value="${escape(p.phone || '')}" oninput="updateMember('${p.id}','phone',this.value)" /></div>
+              <div><label class="label-base required">LINE ID</label><input class="input-base" value="${escape(p.line_id || '')}" oninput="updateMember('${p.id}','line_id',this.value)" /></div>
+            </div>
+            <div><label class="label-base">รายงานตรงต่อ</label><input class="input-base" value="${escape(p.report_to || '')}" oninput="updateMember('${p.id}','report_to',this.value)" /></div>
+          </div>
+        </div>
+      `);
+    }
+    function addMember() { state.team.push({ id: uid(), full_name: '', role_label: 'worker', phone: '', line_id: '', start_date: '', report_to: '' }); updateChecklistTeam(); renderStep(); }
+    function updateMember(id, f, v) { const p = state.team.find(x => x.id === id); if (p) p[f] = v; updateChecklistTeam(); }
+    function removeMember(id) { state.team = state.team.filter(x => x.id !== id); updateChecklistTeam(); renderStep(); }
+    function updateChecklistTeam() { state.checklist.team = state.team.length > 0 && state.team.every(p => p.full_name && p.phone && p.line_id); renderChecklist(); }
+
+    /* ─── Nav + global ──────────────────────────────────────── */
+    function goToStep(n) { if (n > state.currentStep + 1) return toast('กรอก step ก่อนหน้าให้เสร็จก่อน', 'danger'); state.currentStep = n; renderStep(); }
+    function nextStep() {
+      // v5: Step 1 — cross-validate BOTH tabs before moving on
+      if (state.currentStep === 1) {
+        updateChecklist1A(); updateChecklist1B();
+        const missing = findMissing([...REQUIRED_1A, ...REQUIRED_1B]);
+        if (missing.length > 0) {
+          toast(`ยังขาด ${missing.length} ฟิลด์: ${missing.map(m => m.label).join(', ')}`, 'danger');
+          focusFirstMissing(missing);
+          return;
+        }
+        if (!state.projectCode) {
+          const seq = String(Math.floor(Math.random() * 999) + 1).padStart(3, '0');
+          state.projectCode = `SKB-26-${seq}`;
+          toast(`สร้างโครงการ ${state.projectCode} สำเร็จ`);
+        }
+      }
+      // Block "Next" if BOQ allocation incomplete
+      if (state.currentStep === 3 && state.materials.length > 0) {
+        const s = getAllocationSummary(state.materials);
+        if (s.ok < state.materials.length) return toast(`ยังมี ${state.materials.length - s.ok} รายการที่ allocation ไม่ครบ 100%`, 'danger');
+      }
+      if (state.currentStep === 4 && state.labor.length > 0) {
+        const s = getAllocationSummary(state.labor);
+        if (s.ok < state.labor.length) return toast(`ยังมี ${state.labor.length - s.ok} รายการที่ allocation ไม่ครบ 100%`, 'danger');
+      }
+      if (state.currentStep < 5) { state.currentStep++; renderStep(); }
+    }
+    function prevStep() { if (state.currentStep > 1) { state.currentStep--; renderStep(); } }
+    function saveDraft() { const ind = $('#autosave-indicator'); if (ind) ind.textContent = '💾 บันทึก draft ' + new Date().toLocaleTimeString('th-TH'); toast('บันทึก draft'); }
+    function allDone() { return Object.values(state.checklist).every(Boolean); }
+    function finalSubmit() { if (!allDone()) return toast('ยังกรอกไม่ครบ', 'danger'); toast('🎉 ส่งสำเร็จ! (mock — ของจริงจะ POST ไป n8n webhook)'); }
+    function toggleAiGuide() { const sb = $('#ai-sidebar'); sb.classList.toggle('hidden'); if (!sb.classList.contains('hidden')) sb.classList.add('slide-in'); lucide.createIcons(); }
+
+    setInterval(() => { const ind = $('#autosave-indicator'); if (ind && state.route === 'wizard') ind.textContent = '💾 auto-saved ' + new Date().toLocaleTimeString('th-TH'); }, 30000);
+
+    /* ─── INIT ──────────────────────────────────────────────── */
+    const initialHash = (window.location.hash || '#sign-in').slice(1);
+    state.route = ['sign-in','register','wizard','admin'].includes(initialHash) ? initialHash : 'sign-in';
+    render();
+  </script>
+</body>
+</html>
