@@ -30,7 +30,10 @@ export default function SignUpPage() {
     if (password !== password2) { toast.error("รหัสผ่านไม่ตรงกัน"); return; }
     if (password.length < 8) { toast.error("รหัสผ่านอย่างน้อย 8 ตัวอักษร"); return; }
     setLoading(true);
-    // 1) Sign up via Supabase Auth — user record in auth.users
+
+    // Sign up — Supabase will email confirm link.
+    // Employees row is created in /auth/callback after email confirmation
+    // (handles both auto-confirm and confirm-required modes).
     const { data, error } = await supabase.auth.signUp({
       email, password,
       options: {
@@ -38,34 +41,26 @@ export default function SignUpPage() {
         emailRedirectTo: `${window.location.origin}/auth/callback`,
       },
     });
+    setLoading(false);
+
     if (error) {
-      setLoading(false);
       toast.error("สมัครไม่สำเร็จ: " + error.message);
       return;
     }
 
-    // 2) Insert linked employees row (is_approved=false; admin must approve)
-    if (data.user) {
-      const { error: empErr } = await supabase.from("employees").insert({
-        company_id: "SKY001",
-        full_name: name,
-        first_name: name.split(" ")[0] || name,
-        last_name: name.split(" ").slice(1).join(" ") || "",
-        nickname: name,
-        role_code: role === "site_manager" ? "manager" : role === "foreman" ? "foreman" : "engineer",
-        auth_user_id: data.user.id,
-        hr_verified: false,
-        first_login_completed: false,
-        is_approved: false,
-      });
-      if (empErr) {
-        // Not fatal — can be reconciled by admin later
-        console.warn("employees insert warning:", empErr.message);
-      }
+    // If session is already active (Auto-confirm enabled in Supabase):
+    if (data.session) {
+      toast.success("สมัครสำเร็จ — กำลังพาไปกรอกข้อมูล");
+      // Trigger callback flow which will create the employees row
+      window.location.href = "/auth/callback?code=skip&next=/wizard";
+      return;
     }
 
-    setLoading(false);
-    toast.success("สมัครสำเร็จ — รอ admin อนุมัติ + เช็คอีเมล confirm (ถ้าจำเป็น)");
+    // Confirm-email mode — user must check inbox
+    toast.success("สมัครสำเร็จ", {
+      description: `เช็คอีเมล ${email} เพื่อยืนยันบัญชี — ลิงก์จะพากลับมาที่นี่`,
+      duration: 10000,
+    });
     router.push("/sign-in");
   }
 

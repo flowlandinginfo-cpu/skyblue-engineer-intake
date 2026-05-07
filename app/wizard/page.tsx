@@ -12,11 +12,13 @@ const PROJECT_TYPES = [
 ];
 
 interface Employee { id: string; full_name: string; role_code: string; }
+interface RecentProject { id: string; project_code: string; project_name: string; intake_status: string; created_at: string; }
 
 export default function WizardStep1() {
   const supabase = createClient();
   const [tab, setTab] = useState<"1A" | "1B">("1A");
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [recentProjects, setRecentProjects] = useState<RecentProject[]>([]);
   const [loading, setLoading] = useState(false);
   const [projectCode, setProjectCode] = useState<string | null>(null);
 
@@ -37,7 +39,17 @@ export default function WizardStep1() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
-  // Load employees for dropdown
+  // Load employees for dropdown + recent projects
+  const reloadProjects = async () => {
+    const { data } = await supabase
+      .from("skb_projects")
+      .select("id, project_code, project_name, intake_status, created_at")
+      .eq("company_id", "SKY001")
+      .order("created_at", { ascending: false })
+      .limit(5);
+    if (data) setRecentProjects(data as RecentProject[]);
+  };
+
   useEffect(() => {
     (async () => {
       const { data, error } = await supabase
@@ -52,6 +64,8 @@ export default function WizardStep1() {
       }
       if (data) setEmployees(data as Employee[]);
     })();
+    reloadProjects();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supabase]);
 
   function extractLatLng(url: string): { lat?: number; lng?: number } {
@@ -125,6 +139,13 @@ export default function WizardStep1() {
     if (data) {
       setProjectCode(data.project_code);
       toast.success(`สร้างโครงการ ${data.project_code} สำเร็จ — Step 2 (งวดงาน) กำลังพัฒนา`);
+      // Reset form for next entry + reload recent list
+      setProjectName(""); setClientName(""); setLocationAddress("");
+      setMapsUrl(""); setSiteManagerId(""); setProjectManagerId("");
+      setContractNo(""); setContractValue(""); setBudgetEstimate("");
+      setIntakeDeadline(""); setStartDate(""); setEndDate("");
+      reloadProjects();
+      setTab("1A");
     }
   }
 
@@ -142,6 +163,25 @@ export default function WizardStep1() {
           ))}
         </div>
       </div>
+
+      {/* Recent projects */}
+      {recentProjects.length > 0 && (
+        <div className="rounded-2xl bg-white p-4 shadow-soft">
+          <div className="mb-2 flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-slate-700">📂 โครงการที่สร้างไว้ล่าสุด</h3>
+            <button onClick={reloadProjects} className="text-xs text-slate-500 hover:text-slate-700">↻ Refresh</button>
+          </div>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {recentProjects.map(p => (
+              <div key={p.id} className="rounded-xl border border-slate-200 p-3 text-sm">
+                <p className="font-mono text-xs text-brand-primary">{p.project_code}</p>
+                <p className="truncate font-medium text-slate-800" title={p.project_name}>{p.project_name}</p>
+                <p className="text-[11px] text-slate-500">{new Date(p.created_at).toLocaleString("th-TH")} · status: <code className="rounded bg-slate-100 px-1">{p.intake_status}</code></p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Helpful banner */}
       <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
