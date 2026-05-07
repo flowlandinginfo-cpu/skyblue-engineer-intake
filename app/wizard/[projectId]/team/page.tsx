@@ -196,13 +196,23 @@ export default function TeamPage() {
   async function submitIntake() {
     if (!confirm("ยืนยันส่งฟอร์ม intake?\nหลังส่งแล้ว สถานะจะเปลี่ยนเป็น 'เสร็จสมบูรณ์' และจะถูกส่งให้ทีม cashflow ต่อ")) return;
     setSubmitting(true);
+    // submitted_by FK → employees.id (NOT auth.users.id) — lookup via auth_user_id
     const { data: { user } } = await supabase.auth.getUser();
+    let employeeId: string | null = null;
+    if (user) {
+      const { data: emp } = await supabase
+        .from("employees")
+        .select("id")
+        .eq("auth_user_id", user.id)
+        .maybeSingle();
+      employeeId = ((emp as { id: string } | null)?.id) || null;
+    }
     const { error } = await supabase
       .from("skb_projects")
       .update({
         intake_status: "complete",
         submitted_at: new Date().toISOString(),
-        submitted_by: user?.id || null,
+        submitted_by: employeeId, // nullable — FK has ON DELETE SET NULL
       })
       .eq("id", projectId);
     setSubmitting(false);
