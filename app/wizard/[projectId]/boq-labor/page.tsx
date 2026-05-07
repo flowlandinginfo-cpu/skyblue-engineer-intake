@@ -165,7 +165,7 @@ export default function BoqLaborPage() {
         company_id: "SKY001",
         project_id: projectId,
         category: r.category || null,
-        work_type: r.work_type || null,
+        work_type: r.work_type?.trim() || r.category?.trim() || "ทั่วไป",
         work_description: r.work_description,
         unit: r.unit,
         quantity: r.quantity,
