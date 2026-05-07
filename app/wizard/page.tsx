@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { fmtTHB } from "@/lib/utils";
@@ -16,6 +18,7 @@ interface RecentProject { id: string; project_code: string; project_name: string
 
 export default function WizardStep1() {
   const supabase = createClient();
+  const router = useRouter();
   const [tab, setTab] = useState<"1A" | "1B">("1A");
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [recentProjects, setRecentProjects] = useState<RecentProject[]>([]);
@@ -138,14 +141,9 @@ export default function WizardStep1() {
     }
     if (data) {
       setProjectCode(data.project_code);
-      toast.success(`สร้างโครงการ ${data.project_code} สำเร็จ — Step 2 (งวดงาน) กำลังพัฒนา`);
-      // Reset form for next entry + reload recent list
-      setProjectName(""); setClientName(""); setLocationAddress("");
-      setMapsUrl(""); setSiteManagerId(""); setProjectManagerId("");
-      setContractNo(""); setContractValue(""); setBudgetEstimate("");
-      setIntakeDeadline(""); setStartDate(""); setEndDate("");
-      reloadProjects();
-      setTab("1A");
+      toast.success(`สร้างโครงการ ${data.project_code} สำเร็จ — กำลังพาไป Step 2 (งวดงาน)`);
+      // Redirect to Step 2 (milestones) of the new project
+      setTimeout(() => router.push(`/wizard/${data.id}/milestones`), 600);
     }
   }
 
@@ -173,11 +171,11 @@ export default function WizardStep1() {
           </div>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {recentProjects.map(p => (
-              <div key={p.id} className="rounded-xl border border-slate-200 p-3 text-sm">
-                <p className="font-mono text-xs text-brand-primary">{p.project_code}</p>
+              <Link key={p.id} href={`/wizard/${p.id}/milestones`} className="block rounded-xl border border-slate-200 p-3 text-sm transition hover:border-brand-primary hover:bg-brand-primary/5">
+                <p className="font-mono text-xs text-brand-primary">{p.project_code} →</p>
                 <p className="truncate font-medium text-slate-800" title={p.project_name}>{p.project_name}</p>
-                <p className="text-[11px] text-slate-500">{new Date(p.created_at).toLocaleString("th-TH")} · status: <code className="rounded bg-slate-100 px-1">{p.intake_status}</code></p>
-              </div>
+                <p className="text-[11px] text-slate-500">{new Date(p.created_at).toLocaleString("th-TH")} · <code className="rounded bg-slate-100 px-1">{p.intake_status}</code></p>
+              </Link>
             ))}
           </div>
         </div>
