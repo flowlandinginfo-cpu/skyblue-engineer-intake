@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
@@ -193,6 +194,16 @@ export default function MilestonesStep2() {
           saving={saving}
         />
       )}
+
+      {/* Footer nav */}
+      <div className="flex items-center justify-between rounded-2xl bg-white p-4 shadow-soft">
+        <Link href={`/wizard`} className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">← ข้อมูลโครงการ</Link>
+        <div className="text-center text-xs">
+          {!isFull && <span className="text-amber-700">⚠️ ยังกระจายไม่ครบ 100% ก็ไปต่อได้ แต่ควรกลับมาแก้</span>}
+          {isFull && <span className="text-emerald-700">✅ พร้อมไปต่อ</span>}
+        </div>
+        <Link href={`/wizard/${projectId}/boq-materials`} className="rounded-lg bg-brand-primary px-5 py-2 text-sm font-semibold text-white hover:bg-brand-primary-dark">BOQ วัสดุ →</Link>
+      </div>
     </div>
   );
 }
