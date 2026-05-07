@@ -112,8 +112,13 @@ function SignInForm() {
             ยังไม่มีบัญชี? <Link href="/sign-up" className="font-semibold text-brand-primary hover:underline">สมัครเป็นวิศวกร</Link>
           </p>
 
-          <div className="mt-6 rounded-lg bg-amber-50 px-3 py-2 text-[11px] text-amber-700">
-            💡 รอบแรก: Boss ต้อง enable Email auth + (optional) "Auto-confirm" ใน Supabase Dashboard → Authentication → Providers → Email
+          <div className="mt-6 space-y-2">
+            <div className="rounded-lg bg-blue-50 px-3 py-2 text-[11px] text-blue-700">
+              🛡️ <b>Admin / Manager / Owner:</b> เข้าสู่ระบบด้วยอีเมลของตัวเอง — ระบบจะตรวจ role อัตโนมัติ และเปิดเมนู ⚙️ Admin ที่ top nav หลัง login สำหรับจัดการพนักงาน + อนุมัติบัญชีใหม่
+            </div>
+            <div className="rounded-lg bg-amber-50 px-3 py-2 text-[11px] text-amber-700">
+              💡 หากเข้าระบบไม่ได้ — เช็คว่า admin enable "Email" provider + (optional dev) ปิด "Confirm email" ใน Supabase Dashboard
+            </div>
           </div>
         </div>
       </div>

@@ -28,7 +28,6 @@ export default function WizardStep1() {
   const [mapsUrl, setMapsUrl] = useState("");
   const [siteManagerId, setSiteManagerId] = useState("");
   const [projectManagerId, setProjectManagerId] = useState("");
-  const [oneDriveUrl, setOneDriveUrl] = useState("");
 
   // Tab 1B — contract
   const [contractNo, setContractNo] = useState("");
@@ -41,12 +40,16 @@ export default function WizardStep1() {
   // Load employees for dropdown
   useEffect(() => {
     (async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("employees")
         .select("id, full_name, role_code")
         .eq("company_id", "SKY001")
         .eq("is_approved", true)
         .order("full_name");
+      if (error) {
+        toast.error("โหลดพนักงานไม่ได้: " + error.message);
+        return;
+      }
       if (data) setEmployees(data as Employee[]);
     })();
   }, [supabase]);
@@ -66,7 +69,6 @@ export default function WizardStep1() {
   }
 
   async function handleSave() {
-    // Validation
     const missing: string[] = [];
     if (!projectName) missing.push("ชื่อโครงการ");
     if (!clientName) missing.push("ชื่อหน่วยงาน");
@@ -88,7 +90,7 @@ export default function WizardStep1() {
     const { data: meEmp } = await supabase
       .from("employees")
       .select("id")
-      .eq("auth_user_id", userData.user?.id)
+      .eq("auth_user_id", userData.user?.id ?? "")
       .maybeSingle() as { data: { id: string } | null };
 
     const { data, error } = await supabase
@@ -109,7 +111,6 @@ export default function WizardStep1() {
         location_lng: lng ?? null,
         site_manager_id: siteManagerId,
         project_manager_id: projectManagerId,
-        onedrive_folder_url: oneDriveUrl || null,
         intake_status: "draft",
         created_by: meEmp?.id ?? null,
       })
@@ -123,7 +124,7 @@ export default function WizardStep1() {
     }
     if (data) {
       setProjectCode(data.project_code);
-      toast.success(`สร้างโครงการ ${data.project_code} สำเร็จ`);
+      toast.success(`สร้างโครงการ ${data.project_code} สำเร็จ — Step 2 (งวดงาน) กำลังพัฒนา`);
     }
   }
 
@@ -140,6 +141,16 @@ export default function WizardStep1() {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Helpful banner */}
+      <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
+        <p className="font-semibold">📝 วิธีกรอกฟอร์มนี้</p>
+        <ul className="mt-1 list-disc pl-5 text-xs leading-relaxed">
+          <li>ฟิลด์ที่มีดอกจัน <span className="text-rose-500">*</span> คือฟิลด์บังคับ — ครบทุกช่องระบบจึงจะให้บันทึกได้</li>
+          <li>กรอก Tab "ข้อมูลโครงการ" และ "ข้อมูลสัญญา" ทั้ง 2 — กดปุ่มสีน้ำเงินด้านล่าง Tab 2 เพื่อสร้างโครงการ</li>
+          <li>ข้อมูลที่กรอกจะ sync เข้า Supabase ทันที ระบบจะ generate รหัสโครงการ <code className="rounded bg-white/60 px-1">SKB-26-XXX</code> ให้อัตโนมัติ</li>
+        </ul>
       </div>
 
       {/* Card */}
@@ -169,43 +180,66 @@ export default function WizardStep1() {
 
         {tab === "1A" && (
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-            <Field label="ชื่อโครงการ *" className="md:col-span-2">
+            <Field
+              label="ชื่อโครงการ *"
+              hint="ชื่อเต็มตามเอกสารสัญญา ใช้ภาษาไทยได้ — เช่น 'ก่อสร้างอาคาร อบต.บันนังสาเรง'"
+              className="md:col-span-2"
+            >
               <Input value={projectName} onChange={setProjectName} placeholder="เช่น ก่อสร้างอาคาร อบต.บันนังสาเรง" />
             </Field>
-            <Field label="ประเภทโครงการ *">
+            <Field
+              label="ประเภทโครงการ *"
+              hint="ภาครัฐ = อบต., เทศบาล, สนง.เขตพื้นที่ฯ · เอกชน = บริษัท, บุคคล"
+            >
               <select value={projectType} onChange={e => setProjectType(e.target.value)} className={inputCls}>
                 {PROJECT_TYPES.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
               </select>
             </Field>
-            <Field label="ชื่อหน่วยงานเจ้าของงาน *">
+            <Field
+              label="ชื่อหน่วยงานเจ้าของงาน *"
+              hint="ชื่อหน่วยงาน/บริษัทผู้ว่าจ้าง ตามที่ระบุในสัญญา"
+            >
               <Input value={clientName} onChange={setClientName} placeholder="อบต.บันนังสาเรง / สนง.เขตพื้นที่ฯ" />
             </Field>
-            <Field label="สถานที่โครงการ (ที่อยู่เต็ม) *" className="md:col-span-2">
+            <Field
+              label="สถานที่โครงการ (ที่อยู่เต็ม) *"
+              hint="ที่อยู่เต็ม: เลขที่ + หมู่ + ตำบล + อำเภอ + จังหวัด — ใช้สำหรับ HR check-in GPS หน้างาน"
+              className="md:col-span-2"
+            >
               <textarea value={locationAddress} onChange={e => setLocationAddress(e.target.value)} rows={2} placeholder="เลขที่... หมู่... ตำบล... อำเภอ... จังหวัด..." className={inputCls} />
             </Field>
-            <Field label="📍 พิกัด GPS — paste link Google Maps" className="md:col-span-2">
+            <Field
+              label="📍 พิกัด GPS — paste link Google Maps"
+              hint="เปิด Google Maps ค้นหาสถานที่ → กดปุ่ม 'แชร์' → คัดลอกลิงก์ → paste ที่นี่ ระบบจะดึง lat/lng ให้อัตโนมัติ"
+              className="md:col-span-2"
+            >
               <Input value={mapsUrl} onChange={setMapsUrl} placeholder="https://maps.google.com/?q=13.7563,100.5018" />
               {(() => {
                 const r = extractLatLng(mapsUrl);
                 if (r.lat) return <p className="mt-1 text-xs text-emerald-600">✓ Latitude: <b>{r.lat}</b> · Longitude: <b>{r.lng}</b></p>;
-                if (mapsUrl) return <p className="mt-1 text-xs text-rose-600">⚠️ ไม่พบ lat/lng ใน URL</p>;
-                return <p className="mt-1 text-xs text-slate-500">paste link → ระบบจะ auto extract lat/lng</p>;
+                if (mapsUrl) return <p className="mt-1 text-xs text-rose-600">⚠️ ไม่พบ lat/lng ใน URL — ลอง copy link จากเมนู &quot;Share&quot; ของ Google Maps</p>;
+                return null;
               })()}
             </Field>
-            <Field label="Site Manager *">
+            <Field
+              label="Site Manager *"
+              hint={employees.length === 0
+                ? "⚠️ ยังไม่มีพนักงานในระบบ — ติดต่อ admin ให้เพิ่มพนักงานก่อน หรือไป /admin/employees"
+                : "หัวหน้าคุมงานหน้าโครงการ (Foreman ขึ้น) — เลือกจากพนักงานที่ admin อนุมัติแล้ว"}
+            >
               <select value={siteManagerId} onChange={e => setSiteManagerId(e.target.value)} className={inputCls}>
-                <option value="">— เลือก —</option>
+                <option value="">{employees.length === 0 ? "— ไม่มีพนักงานในระบบ —" : "— เลือก —"}</option>
                 {employees.map(e => <option key={e.id} value={e.id}>{e.full_name} ({e.role_code})</option>)}
               </select>
             </Field>
-            <Field label="วิศวกรผู้รับผิดชอบ *">
+            <Field
+              label="วิศวกรผู้รับผิดชอบ *"
+              hint="วิศวกรหลักที่ดูแลโครงการนี้ — มักเป็นผู้ที่เซ็นสัญญา"
+            >
               <select value={projectManagerId} onChange={e => setProjectManagerId(e.target.value)} className={inputCls}>
-                <option value="">— เลือก —</option>
+                <option value="">{employees.length === 0 ? "— ไม่มีพนักงานในระบบ —" : "— เลือก —"}</option>
                 {employees.map(e => <option key={e.id} value={e.id}>{e.full_name} ({e.role_code})</option>)}
               </select>
-            </Field>
-            <Field label="📁 OneDrive Folder URL (Phase 1)" className="md:col-span-2">
-              <Input value={oneDriveUrl} onChange={setOneDriveUrl} placeholder="https://onedrive.live.com/..." />
             </Field>
             <div className="md:col-span-2 flex justify-end">
               <button onClick={() => setTab("1B")} className="rounded-xl bg-brand-primary px-5 py-2 text-sm font-semibold text-white hover:bg-brand-primary-dark">
@@ -217,23 +251,41 @@ export default function WizardStep1() {
 
         {tab === "1B" && (
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-            <Field label="เลขที่สัญญา *">
+            <Field
+              label="เลขที่สัญญา *"
+              hint="เลขที่สัญญาตามเอกสาร เช่น '5/2568' หรือ 'อบต.บันนัง 12/2568'"
+            >
               <Input value={contractNo} onChange={setContractNo} placeholder="เช่น 5/2568" />
             </Field>
-            <Field label="มูลค่าสัญญา (บาท) *">
-              <Input value={contractValue} onChange={setContractValue} type="number" placeholder="19,040,000" />
+            <Field
+              label="มูลค่าสัญญา (บาท) *"
+              hint="มูลค่ารวมตามสัญญา ใส่เฉพาะตัวเลข ไม่ต้องใส่ , หรือ ฿"
+            >
+              <Input value={contractValue} onChange={setContractValue} type="number" placeholder="19040000" />
               {contractValue && <p className="mt-1 text-xs text-brand-primary">฿{fmtTHB(contractValue)}</p>}
             </Field>
-            <Field label="ประมาณการงบ (บาท)">
-              <Input value={budgetEstimate} onChange={setBudgetEstimate} type="number" placeholder="17,000,000" />
+            <Field
+              label="ประมาณการงบ (บาท)"
+              hint="งบที่บริษัทประมาณว่าจะใช้จริง (ต้นทุน) — ใช้คำนวณกำไรประมาณการ ไม่บังคับ"
+            >
+              <Input value={budgetEstimate} onChange={setBudgetEstimate} type="number" placeholder="17000000" />
             </Field>
-            <Field label="Deadline สำหรับ intake">
+            <Field
+              label="Deadline ที่จะกรอกข้อมูลนี้เสร็จ"
+              hint="วันสุดท้ายที่ต้องกรอกฟอร์มทั้ง 5 step ให้ครบ — ใช้ส่งแจ้งเตือนวิศวกร"
+            >
               <Input value={intakeDeadline} onChange={setIntakeDeadline} type="date" />
             </Field>
-            <Field label="วันที่เริ่มสัญญา *">
+            <Field
+              label="วันที่เริ่มสัญญา *"
+              hint="วันแรกที่นับตามสัญญา (ไม่จำเป็นต้องเป็นวันเข้างานจริง)"
+            >
               <Input value={startDate} onChange={setStartDate} type="date" />
             </Field>
-            <Field label="วันที่สิ้นสุดสัญญา *">
+            <Field
+              label="วันที่สิ้นสุดสัญญา *"
+              hint="วันสุดท้ายที่ต้องส่งมอบงานตามสัญญา"
+            >
               <Input value={endDate} onChange={setEndDate} type="date" />
             </Field>
             <div className="md:col-span-2 flex items-center justify-between border-t border-slate-100 pt-4">
@@ -255,14 +307,17 @@ export default function WizardStep1() {
 }
 
 const inputCls = "w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm focus:border-brand-primary focus:outline-none focus:ring-2 focus:ring-brand-primary/20";
-function Field({ label, children, className }: { label: string; children: React.ReactNode; className?: string }) {
+
+function Field({ label, hint, children, className }: { label: string; hint?: string; children: React.ReactNode; className?: string }) {
   return (
     <div className={className}>
       <label className="mb-1 block text-sm font-medium text-slate-700">{label}</label>
       {children}
+      {hint && <p className="mt-1 text-[11px] leading-relaxed text-slate-500">💡 {hint}</p>}
     </div>
   );
 }
+
 function Input({ value, onChange, ...rest }: { value: string; onChange: (v: string) => void } & Omit<React.InputHTMLAttributes<HTMLInputElement>, "value" | "onChange">) {
   return <input value={value} onChange={e => onChange(e.target.value)} className={inputCls} {...rest} />;
 }
