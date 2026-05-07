@@ -19,20 +19,27 @@ interface PersonnelRow {
   notes: string;
 }
 
-const ROLES = [
-  "หัวหน้าไซต์",
-  "โฟร์แมน",
-  "ช่างเหล็ก",
-  "ช่างไม้",
-  "ช่างปูน",
-  "ช่างไฟฟ้า",
-  "ช่างประปา",
-  "ช่างฝ้า/ผนัง",
-  "ช่างสี",
-  "เจ้าหน้าที่ความปลอดภัย",
-  "กรรมกร",
-  "อื่นๆ",
+// DB CHECK constraint allows only: engineer | foreman | skilled_worker | worker | other
+// Show 5 Thai labels mapped 1:1 to DB codes.
+const ROLE_OPTIONS: { value: string; label: string }[] = [
+  { value: "engineer", label: "วิศวกร / หัวหน้าไซต์" },
+  { value: "foreman", label: "โฟร์แมน" },
+  { value: "skilled_worker", label: "ช่างฝีมือ (เหล็ก/ไม้/ปูน/ไฟฟ้า/ประปา/สี ฯลฯ)" },
+  { value: "worker", label: "กรรมกร" },
+  { value: "other", label: "อื่นๆ (จป., เสมียน, รปภ.)" },
 ];
+
+// Map free-text Thai label (from Excel paste) → DB code
+function mapRoleToCode(input: string): string {
+  const v = (input || "").trim().toLowerCase();
+  if (!v) return "worker";
+  if (ROLE_OPTIONS.some(o => o.value === v)) return v;
+  if (v.includes("วิศว") || v.includes("หัวหน้าไซต์") || v.includes("engineer")) return "engineer";
+  if (v.includes("โฟร์แมน") || v.includes("foreman")) return "foreman";
+  if (v.includes("ช่าง") || v.includes("skilled")) return "skilled_worker";
+  if (v.includes("กรรมกร") || v.includes("worker")) return "worker";
+  return "other";
+}
 
 const PASTE_COLUMNS = [
   { key: "full_name", label: "ชื่อ-นามสกุล", type: "text" as const },
@@ -103,7 +110,7 @@ export default function TeamPage() {
       id: `new-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       isNew: true,
       full_name: "",
-      role_label: "กรรมกร",
+      role_label: "worker",
       phone: "",
       line_id: "",
       start_date: null,
@@ -131,13 +138,18 @@ export default function TeamPage() {
   function applyPaste(parsed: Record<string, string | number>[]) {
     const newRows: PersonnelRow[] = parsed.map(p => {
       const sd = String(p.start_date || "").trim();
+      const roleRaw = String(p.role_label || "").trim();
+      const roleCode = mapRoleToCode(roleRaw);
+      const specialty = roleRaw && !ROLE_OPTIONS.some(o => o.label === roleRaw || o.value === roleRaw)
+        ? roleRaw : "";
       return {
         ...newRow(),
         full_name: String(p.full_name || "").trim(),
-        role_label: String(p.role_label || "").trim() || "กรรมกร",
+        role_label: roleCode,
         phone: String(p.phone || "").trim(),
         line_id: String(p.line_id || "").trim(),
         start_date: /^\d{4}-\d{2}-\d{2}$/.test(sd) ? sd : null,
+        notes: specialty ? `[${specialty}]` : "",
       };
     });
     setRows(rs => [...rs, ...newRows]);
@@ -153,11 +165,12 @@ export default function TeamPage() {
     const inserts: Record<string, unknown>[] = [];
     const updates: { id: string; patch: Record<string, unknown> }[] = [];
     for (const r of valid) {
+      const code = mapRoleToCode(r.role_label || "");
       const payload = {
         company_id: "SKY001",
         project_id: projectId,
         full_name: r.full_name.trim(),
-        role_label: r.role_label?.trim() || "กรรมกร",
+        role_label: code,
         phone: r.phone?.trim() || null,
         line_id: r.line_id?.trim() || null,
         start_date: r.start_date || null,
@@ -249,8 +262,8 @@ export default function TeamPage() {
                       <input value={r.full_name} onChange={e => update(r.id, { full_name: e.target.value })} className="w-full min-w-[160px] rounded border border-slate-300 bg-white px-1 py-1" />
                     </td>
                     <td className="px-2 py-1.5">
-                      <select className="w-32 rounded border border-slate-300 bg-white px-1 py-1" value={r.role_label} onChange={e => update(r.id, { role_label: e.target.value })}>
-                        {ROLES.map(role => <option key={role} value={role}>{role}</option>)}
+                      <select className="w-44 rounded border border-slate-300 bg-white px-1 py-1" value={r.role_label} onChange={e => update(r.id, { role_label: e.target.value })}>
+                        {ROLE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                       </select>
                     </td>
                     <td className="px-2 py-1.5">
