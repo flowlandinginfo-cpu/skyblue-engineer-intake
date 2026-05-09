@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
 const ADMIN_NAV = [
+  { href: "/admin/monitor", label: "Bot Monitor", icon: "📊" },
   { href: "/admin/employees", label: "พนักงาน", icon: "👥" },
   { href: "/admin/projects", label: "โครงการ", icon: "🏗️" },
   { href: "/admin/companies", label: "บริษัท", icon: "🏢" },
