@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
@@ -15,15 +15,26 @@ const PROJECT_TYPES = [
 
 interface Employee { id: string; full_name: string; role_code: string; }
 interface RecentProject { id: string; project_code: string; project_name: string; intake_status: string; created_at: string; }
+interface DraftProject { id: string; project_code: string; project_name: string; }
 
-export default function WizardStep1() {
+function WizardStep1Inner() {
   const supabase = createClient();
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Query params from invite redirect: ?project=<id>&assignment=<id>
+  const lockedProjectId = searchParams.get("project");
+  const assignmentId = searchParams.get("assignment");
+
   const [tab, setTab] = useState<"1A" | "1B">("1A");
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [recentProjects, setRecentProjects] = useState<RecentProject[]>([]);
+  const [draftProjects, setDraftProjects] = useState<DraftProject[]>([]);
+  const [selectedDraftId, setSelectedDraftId] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [projectCode, setProjectCode] = useState<string | null>(null);
+  // Track locked project name for the read-only banner
+  const [lockedProjectName, setLockedProjectName] = useState<string | null>(null);
 
   // Tab 1A — project info
   const [projectName, setProjectName] = useState("");
@@ -53,23 +64,71 @@ export default function WizardStep1() {
     if (data) setRecentProjects(data as RecentProject[]);
   };
 
+  // Stage 16: load draft+unsubmitted projects (PM-created, awaiting engineer details)
+  const reloadDrafts = async () => {
+    const { data } = await supabase
+      .from("skb_projects")
+      .select("id, project_code, project_name")
+      .eq("company_id", "SKY001")
+      .eq("intake_status", "draft")
+      .is("submitted_by", null)
+      .order("project_code");
+    if (data) setDraftProjects(data as DraftProject[]);
+  };
+
   useEffect(() => {
     (async () => {
-      const { data, error } = await supabase
+      // Load employees
+      const { data: empData, error: empError } = await supabase
         .from("employees")
         .select("id, full_name, role_code")
         .eq("company_id", "SKY001")
         .eq("is_approved", true)
         .order("full_name");
-      if (error) {
-        toast.error("โหลดพนักงานไม่ได้: " + error.message);
-        return;
+      if (empError) {
+        toast.error("โหลดพนักงานไม่ได้: " + empError.message);
+      } else if (empData) {
+        setEmployees(empData as Employee[]);
       }
-      if (data) setEmployees(data as Employee[]);
+
+      // If redirected from invite with ?project=, fetch and pre-fill that project
+      if (lockedProjectId) {
+        const { data: proj, error: projErr } = await supabase
+          .from("skb_projects")
+          .select("id, project_code, project_name, project_type, client_name, contract_no, contract_value, budget_estimate, start_date, end_date, intake_deadline, location_address, location_lat, location_lng, site_manager_id, project_manager_id")
+          .eq("id", lockedProjectId)
+          .maybeSingle();
+        if (projErr) {
+          toast.error("โหลดข้อมูลโครงการไม่ได้: " + projErr.message);
+        } else if (proj) {
+          setLockedProjectName(proj.project_name);
+          setProjectCode(proj.project_code);
+          setProjectName(proj.project_name ?? "");
+          setProjectType(proj.project_type ?? "government");
+          setClientName(proj.client_name ?? "");
+          setContractNo(proj.contract_no ?? "");
+          setContractValue(proj.contract_value != null ? String(proj.contract_value) : "");
+          setBudgetEstimate(proj.budget_estimate != null ? String(proj.budget_estimate) : "");
+          setStartDate(proj.start_date ?? "");
+          setEndDate(proj.end_date ?? "");
+          setIntakeDeadline(proj.intake_deadline ?? "");
+          setLocationAddress(proj.location_address ?? "");
+          setSiteManagerId(proj.site_manager_id ?? "");
+          setProjectManagerId(proj.project_manager_id ?? "");
+          // Reconstruct a dummy maps URL from lat/lng if available
+          if (proj.location_lat && proj.location_lng) {
+            setMapsUrl(`https://maps.google.com/?q=${proj.location_lat},${proj.location_lng}`);
+          }
+        }
+      }
     })();
-    reloadProjects();
+
+    if (!lockedProjectId) {
+      reloadProjects();
+      reloadDrafts();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [supabase]);
+  }, [lockedProjectId]);
 
   function extractLatLng(url: string): { lat?: number; lng?: number } {
     const patterns = [
@@ -110,45 +169,95 @@ export default function WizardStep1() {
       .eq("auth_user_id", userData.user?.id ?? "")
       .maybeSingle() as { data: { id: string } | null };
 
-    const { data, error } = await supabase
-      .from("skb_projects")
-      .insert({
-        company_id: "SKY001",
-        project_name: projectName,
-        project_type: projectType,
-        client_name: clientName,
-        contract_no: contractNo,
-        contract_value: Number(contractValue),
-        budget_estimate: budgetEstimate ? Number(budgetEstimate) : 0,
-        start_date: startDate,
-        end_date: endDate,
-        intake_deadline: intakeDeadline || null,
-        location_address: locationAddress,
-        location_lat: lat ?? null,
-        location_lng: lng ?? null,
-        site_manager_id: siteManagerId,
-        project_manager_id: projectManagerId,
-        intake_status: "draft",
-        created_by: meEmp?.id ?? null,
-      })
-      .select("id, project_code")
-      .single() as { data: { id: string; project_code: string } | null; error: { message: string } | null };
+    const projectPayload = {
+      project_name: projectName,
+      project_type: projectType,
+      client_name: clientName,
+      contract_no: contractNo,
+      contract_value: Number(contractValue),
+      budget_estimate: budgetEstimate ? Number(budgetEstimate) : 0,
+      start_date: startDate,
+      end_date: endDate,
+      intake_deadline: intakeDeadline || null,
+      location_address: locationAddress,
+      location_lat: lat ?? null,
+      location_lng: lng ?? null,
+      site_manager_id: siteManagerId,
+      project_manager_id: projectManagerId,
+    };
+
+    let savedId: string | null = null;
+    let savedCode: string | null = null;
+
+    if (lockedProjectId) {
+      // UPDATE existing project (engineer was invited to fill it in)
+      const { data, error } = await supabase
+        .from("skb_projects")
+        .update({ ...projectPayload, intake_status: "in_progress" })
+        .eq("id", lockedProjectId)
+        .select("id, project_code")
+        .single() as { data: { id: string; project_code: string } | null; error: { message: string } | null };
+
+      if (error) {
+        setLoading(false);
+        toast.error("อัปเดตโครงการไม่สำเร็จ: " + error.message);
+        return;
+      }
+      savedId = data?.id ?? lockedProjectId;
+      savedCode = data?.project_code ?? projectCode;
+
+      // Mark assignment as in_progress
+      if (assignmentId) {
+        await supabase
+          .from("skb_project_intake_assignments")
+          .update({ status: "in_progress" })
+          .eq("id", assignmentId);
+      }
+    } else {
+      // INSERT new project (normal non-invite flow)
+      const { data, error } = await supabase
+        .from("skb_projects")
+        .insert({
+          company_id: "SKY001",
+          ...projectPayload,
+          intake_status: "draft",
+          created_by: meEmp?.id ?? null,
+        })
+        .select("id, project_code")
+        .single() as { data: { id: string; project_code: string } | null; error: { message: string } | null };
+
+      if (error) {
+        setLoading(false);
+        toast.error("บันทึกไม่สำเร็จ: " + error.message);
+        return;
+      }
+      savedId = data?.id ?? null;
+      savedCode = data?.project_code ?? null;
+    }
 
     setLoading(false);
-    if (error) {
-      toast.error("บันทึกไม่สำเร็จ: " + error.message);
-      return;
-    }
-    if (data) {
-      setProjectCode(data.project_code);
-      toast.success(`สร้างโครงการ ${data.project_code} สำเร็จ — กำลังพาไป Step 2 (งวดงาน)`);
-      // Redirect to Step 2 (milestones) of the new project
-      setTimeout(() => router.push(`/wizard/${data.id}/milestones`), 600);
+    if (savedId && savedCode) {
+      setProjectCode(savedCode);
+      const verb = lockedProjectId ? "อัปเดต" : "สร้าง";
+      toast.success(`${verb}โครงการ ${savedCode} สำเร็จ — กำลังพาไป Step 2 (งวดงาน)`);
+      setTimeout(() => router.push(`/wizard/${savedId}/milestones`), 600);
     }
   }
 
   return (
     <div className="space-y-6">
+      {/* Locked-project banner (shown when engineer arrives via invite link) */}
+      {lockedProjectId && lockedProjectName && (
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+          <p className="font-semibold">📌 กำลังแก้ไขโครงการที่ได้รับมอบหมาย</p>
+          <p className="mt-1 text-xs">
+            คุณถูกเชิญมากรอกข้อมูลให้กับโครงการ:{" "}
+            <span className="font-semibold">{lockedProjectName}</span>{" "}
+            ({projectCode}) — ระบบจะ <b>อัปเดต</b>โครงการนี้ (ไม่สร้างใหม่)
+          </p>
+        </div>
+      )}
+
       {/* Progress */}
       <div className="rounded-2xl bg-white p-4 shadow-soft">
         <div className="flex items-center justify-between">
@@ -218,13 +327,52 @@ export default function WizardStep1() {
 
         {tab === "1A" && (
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-            <Field
-              label="ชื่อโครงการ *"
-              hint="ชื่อเต็มตามเอกสารสัญญา ใช้ภาษาไทยได้ — เช่น 'ก่อสร้างอาคาร อบต.บันนังสาเรง'"
-              className="md:col-span-2"
-            >
-              <Input value={projectName} onChange={setProjectName} placeholder="เช่น ก่อสร้างอาคาร อบต.บันนังสาเรง" />
-            </Field>
+            {lockedProjectId ? (
+              /* Read-only project name when engineer arrives via invite */
+              <Field
+                label="ชื่อโครงการ"
+                hint="โครงการนี้ถูกกำหนดมาจากลิงก์เชิญ — ไม่สามารถเปลี่ยนได้"
+                className="md:col-span-2"
+              >
+                <div className={`${inputCls} bg-slate-50 text-slate-600 cursor-not-allowed`}>
+                  {lockedProjectName ?? projectName}
+                </div>
+                <p className="mt-1 text-xs text-emerald-600">🔒 โครงการที่ได้รับมอบหมาย — ระบบจะอัปเดตแทนการสร้างใหม่</p>
+              </Field>
+            ) : (
+              <Field
+                label="ชื่อโครงการ *"
+                hint="เลือกจากโครงการที่บังซิ (PM) สร้างไว้แล้ว — กันพิมพ์ผิด · ถ้าไม่เจอ ติดต่อ admin เพื่อให้บังซิเพิ่ม draft ก่อน"
+                className="md:col-span-2"
+              >
+                <select
+                  value={selectedDraftId}
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    setSelectedDraftId(id);
+                    const draft = draftProjects.find((d) => d.id === id);
+                    setProjectName(draft ? draft.project_name : "");
+                  }}
+                  className={inputCls}
+                >
+                  <option value="">
+                    {draftProjects.length === 0
+                      ? "— ยังไม่มี draft จาก PM —"
+                      : "— เลือกโครงการของคุณ —"}
+                  </option>
+                  {draftProjects.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.project_code} — {d.project_name}
+                    </option>
+                  ))}
+                </select>
+                {selectedDraftId && (
+                  <p className="mt-1 text-xs text-emerald-600">
+                    ✓ เลือก: {projectName}
+                  </p>
+                )}
+              </Field>
+            )}
             <Field
               label="ประเภทโครงการ *"
               hint="ภาครัฐ = อบต., เทศบาล, สนง.เขตพื้นที่ฯ · เอกชน = บริษัท, บุคคล"
@@ -329,7 +477,7 @@ export default function WizardStep1() {
             <div className="md:col-span-2 flex items-center justify-between border-t border-slate-100 pt-4">
               <button onClick={() => setTab("1A")} className="text-sm text-slate-500 hover:text-slate-700">← กลับ Tab 1A</button>
               <button onClick={handleSave} disabled={loading} className="rounded-xl bg-brand-primary px-5 py-2 text-sm font-semibold text-white hover:bg-brand-primary-dark disabled:opacity-60">
-                {loading ? "กำลังบันทึก..." : "บันทึก & สร้างโครงการ"}
+                {loading ? "กำลังบันทึก..." : lockedProjectId ? "อัปเดต & ไปต่อ Step 2" : "บันทึก & สร้างโครงการ"}
               </button>
             </div>
           </div>
@@ -341,6 +489,14 @@ export default function WizardStep1() {
         Steps 2-5 (Milestones, BOQ, Team) + Admin sidebar กำลัง port ในรอบถัดไป
       </div>
     </div>
+  );
+}
+
+export default function WizardStep1() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-slate-500">กำลังโหลด...</div>}>
+      <WizardStep1Inner />
+    </Suspense>
   );
 }
 
